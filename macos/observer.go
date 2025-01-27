@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/mihn1/timekeeper/internal/core"
+	"github.com/mihn1/timekeeper/internal/data"
 	"github.com/progrium/darwinkit/macos"
 	"github.com/progrium/darwinkit/macos/appkit"
 	"github.com/progrium/darwinkit/macos/foundation"
@@ -20,7 +21,7 @@ var (
 	applicationKey foundation.String = foundation.String_StringWithString("NSWorkspaceApplicationKey")
 )
 
-func (o *Observer) StartObserving(ch chan core.AppSwitchEvent) error {
+func (o *Observer) StartObserving(t *core.TimeKeeper) error {
 	macos.RunApp(func(app appkit.Application, delegate *appkit.ApplicationDelegate) {
 		fmt.Println("Starting")
 
@@ -32,7 +33,7 @@ func (o *Observer) StartObserving(ch chan core.AppSwitchEvent) error {
 			foundation.OperationQueue_MainQueue(),
 			func(notification foundation.Notification) {
 				event := getEvent(notification)
-				ch <- event
+				t.PushEvent(event)
 			},
 		)
 	})
@@ -40,13 +41,13 @@ func (o *Observer) StartObserving(ch chan core.AppSwitchEvent) error {
 	return nil
 }
 
-func getEvent(notification foundation.Notification) core.AppSwitchEvent {
+func getEvent(notification foundation.Notification) data.AppSwitchEvent {
 	userInfo := notification.UserInfo()
 	runningApp := appkit.RunningApplicationFrom(userInfo.ObjectForKey(applicationKey).Ptr())
 	appName := runningApp.LocalizedName()
 	desc := runningApp.Description()
 
-	return core.AppSwitchEvent{
+	return data.AppSwitchEvent{
 		AppName:        appName,
 		Time:           time.Now().UTC(),
 		AdditionalData: desc,
