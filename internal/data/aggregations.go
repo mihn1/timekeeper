@@ -4,7 +4,7 @@ import "fmt"
 
 type AppAggregation struct {
 	AppName     string
-	SubAppName  string // E.g. title of a browser tab
+	SubAppName  string // E.g. title of a browser tab or url // TODO: redesign this to support multiple fields
 	TimeElapsed int
 }
 

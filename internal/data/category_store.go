@@ -5,7 +5,6 @@ import (
 	"sync"
 )
 
-// CategoryStore is an interface for storing and retrieving categories.
 type CategoryStore interface {
 	AddCategory(c Category) error
 	GetCategory(id CategoryId) (Category, error)
