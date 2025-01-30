@@ -1,4 +1,4 @@
-package data
+package models
 
 const (
 	WORK CategoryId = iota

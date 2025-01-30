@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/mihn1/timekeeper/internal/core"
-	"github.com/mihn1/timekeeper/internal/data"
+	"github.com/mihn1/timekeeper/internal/models"
 	"github.com/progrium/darwinkit/macos"
 	"github.com/progrium/darwinkit/macos/appkit"
 	"github.com/progrium/darwinkit/macos/foundation"
@@ -41,13 +41,13 @@ func (o *Observer) StartObserving(t *core.TimeKeeper) error {
 	return nil
 }
 
-func getEvent(notification foundation.Notification) data.AppSwitchEvent {
+func getEvent(notification foundation.Notification) models.AppSwitchEvent {
 	userInfo := notification.UserInfo()
 	runningApp := appkit.RunningApplicationFrom(userInfo.ObjectForKey(applicationKey).Ptr())
 	appName := runningApp.LocalizedName()
 	desc := runningApp.Description()
 
-	return data.AppSwitchEvent{
+	return models.AppSwitchEvent{
 		AppName:        appName,
 		Time:           time.Now().UTC(),
 		AdditionalData: desc,

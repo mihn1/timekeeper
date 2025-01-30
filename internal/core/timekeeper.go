@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/mihn1/timekeeper/internal/data"
+	"github.com/mihn1/timekeeper/internal/models"
 )
 
 const (
@@ -15,22 +16,22 @@ var (
 )
 
 type TimeKeeper struct {
-	curAppEvent         *data.AppSwitchEvent
-	appAggregration     map[string]*data.AppAggregation
-	categoryAggregation map[data.CategoryId]*data.CategoryAggregation
+	curAppEvent         *models.AppSwitchEvent
+	appAggregration     map[string]*models.AppAggregation
+	categoryAggregation map[models.CategoryId]*models.CategoryAggregation
 	categoryStore       data.CategoryStore
 	ruleStore           data.RuleStore
 	isEnabled           bool
-	eventChannel        chan data.AppSwitchEvent
+	eventChannel        chan models.AppSwitchEvent
 }
 
 func NewTimeKeeperInMem() *TimeKeeper {
 	t := &TimeKeeper{
 		categoryStore:       data.NewCategoryStore_Memory_Impl(),
 		ruleStore:           data.NewRuleStore_InMemory_Impl(),
-		appAggregration:     make(map[string]*data.AppAggregation),
-		categoryAggregation: make(map[data.CategoryId]*data.CategoryAggregation),
-		eventChannel:        make(chan data.AppSwitchEvent),
+		appAggregration:     make(map[string]*models.AppAggregation),
+		categoryAggregation: make(map[models.CategoryId]*models.CategoryAggregation),
+		eventChannel:        make(chan models.AppSwitchEvent),
 	}
 	defaultResolver = NewDefaultCategoryResolver(t.ruleStore, t.categoryStore)
 	return t
@@ -59,13 +60,13 @@ func (t *TimeKeeper) StartTracking() {
 	}()
 }
 
-func (t *TimeKeeper) PushEvent(event data.AppSwitchEvent) {
+func (t *TimeKeeper) PushEvent(event models.AppSwitchEvent) {
 	if t.IsEnabled() {
 		t.eventChannel <- event
 	}
 }
 
-func (t *TimeKeeper) handleEvent(event *data.AppSwitchEvent) {
+func (t *TimeKeeper) handleEvent(event *models.AppSwitchEvent) {
 	// TODO: gracefully handle the case when the timekeeper is disabled
 	if !t.isEnabled {
 		return
@@ -78,7 +79,7 @@ func (t *TimeKeeper) handleEvent(event *data.AppSwitchEvent) {
 	log.Printf("Category Aggregated: %v\n", t.categoryAggregation)
 }
 
-func (t *TimeKeeper) aggregateEvent(event *data.AppSwitchEvent) int {
+func (t *TimeKeeper) aggregateEvent(event *models.AppSwitchEvent) int {
 	if t.curAppEvent == nil {
 		t.curAppEvent = event
 		return 0
@@ -88,7 +89,7 @@ func (t *TimeKeeper) aggregateEvent(event *data.AppSwitchEvent) int {
 	aggr, ok := t.appAggregration[key]
 
 	if !ok {
-		aggr = &data.AppAggregation{
+		aggr = &models.AppAggregation{
 			AppName:    t.curAppEvent.AppName,
 			SubAppName: t.curAppEvent.SubAppName,
 		}
@@ -101,7 +102,7 @@ func (t *TimeKeeper) aggregateEvent(event *data.AppSwitchEvent) int {
 	return elapsedTime
 }
 
-func (t *TimeKeeper) aggregateCategory(event *data.AppSwitchEvent, elapsedTime int) {
+func (t *TimeKeeper) aggregateCategory(event *models.AppSwitchEvent, elapsedTime int) {
 	cat, err := t.getCategoryFromApp(event, defaultResolver)
 	if err != nil {
 		log.Printf("Error aggregating category: %v\n", err)
@@ -111,7 +112,7 @@ func (t *TimeKeeper) aggregateCategory(event *data.AppSwitchEvent, elapsedTime i
 	aggr, ok := t.categoryAggregation[cat.Id]
 
 	if !ok {
-		aggr = &data.CategoryAggregation{
+		aggr = &models.CategoryAggregation{
 			CategoryId: cat.Id,
 		}
 		t.categoryAggregation[cat.Id] = aggr
@@ -120,7 +121,7 @@ func (t *TimeKeeper) aggregateCategory(event *data.AppSwitchEvent, elapsedTime i
 	aggr.TimeElapsed += elapsedTime
 }
 
-func (t *TimeKeeper) getCategoryFromApp(event *data.AppSwitchEvent, resovler CategoryResolver) (data.Category, error) {
+func (t *TimeKeeper) getCategoryFromApp(event *models.AppSwitchEvent, resovler CategoryResolver) (models.Category, error) {
 	cat, err := resovler.ResolveCategory(event)
 	log.Printf("Category resolved for %v: %v", event.GetEventKey(), cat.Name)
 	return cat, err

@@ -1,10 +1,13 @@
 package core
 
-import "github.com/mihn1/timekeeper/internal/data"
+import (
+	"github.com/mihn1/timekeeper/internal/data"
+	"github.com/mihn1/timekeeper/internal/models"
+)
 
 // resolve category from an app switch event
 type CategoryResolver interface {
-	ResolveCategory(event *data.AppSwitchEvent) (data.Category, error)
+	ResolveCategory(event *models.AppSwitchEvent) (models.Category, error)
 }
 
 type DefaultCategoryResolver struct {
@@ -19,16 +22,16 @@ func NewDefaultCategoryResolver(ruleStore data.RuleStore, categoryStore data.Cat
 	}
 }
 
-func (r *DefaultCategoryResolver) ResolveCategory(event *data.AppSwitchEvent) (data.Category, error) {
+func (r *DefaultCategoryResolver) ResolveCategory(event *models.AppSwitchEvent) (models.Category, error) {
 	// get the rules for the app
 	rules, err := r.RuleStore.GetRulesByApp(event.AppName)
 	if err != nil {
-		return data.Category{}, err
+		return models.Category{}, err
 	}
 
 	// if there are no rules, return the default category
 	if len(rules) == 0 {
-		return r.CategoryStore.GetCategory(data.UNDEFINED)
+		return r.CategoryStore.GetCategory(models.UNDEFINED)
 	}
 
 	// iterate through the rules to find the first match
@@ -39,5 +42,5 @@ func (r *DefaultCategoryResolver) ResolveCategory(event *data.AppSwitchEvent) (d
 	}
 
 	// if no rules match, return the default category
-	return r.CategoryStore.GetCategory(data.UNDEFINED)
+	return r.CategoryStore.GetCategory(models.UNDEFINED)
 }
