@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/mihn1/timekeeper/internal/data"
+	"github.com/mihn1/timekeeper/internal/data/inmem"
 	"github.com/mihn1/timekeeper/internal/models"
 )
 
@@ -27,8 +28,8 @@ type TimeKeeper struct {
 
 func NewTimeKeeperInMem() *TimeKeeper {
 	t := &TimeKeeper{
-		categoryStore:       data.NewCategoryStore_Memory_Impl(),
-		ruleStore:           data.NewRuleStore_InMemory_Impl(),
+		categoryStore:       inmem.NewCategoryStore(),
+		ruleStore:           inmem.NewRuleStore(),
 		appAggregration:     make(map[string]*models.AppAggregation),
 		categoryAggregation: make(map[models.CategoryId]*models.CategoryAggregation),
 		eventChannel:        make(chan models.AppSwitchEvent),
