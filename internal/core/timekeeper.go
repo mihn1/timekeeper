@@ -5,6 +5,7 @@ import (
 
 	"github.com/mihn1/timekeeper/internal/data"
 	"github.com/mihn1/timekeeper/internal/data/inmem"
+	"github.com/mihn1/timekeeper/internal/datatypes"
 	"github.com/mihn1/timekeeper/internal/models"
 )
 
@@ -17,24 +18,23 @@ var (
 )
 
 type TimeKeeper struct {
-	curAppEvent         *models.AppSwitchEvent
-	appAggregration     map[string]*models.AppAggregation
-	categoryAggregation map[models.CategoryId]*models.CategoryAggregation
-	categoryStore       data.CategoryStore
-	ruleStore           data.RuleStore
-	isEnabled           bool
-	eventChannel        chan models.AppSwitchEvent
+	curAppEvent  *models.AppSwitchEvent
+	storage      *data.Storage
+	isEnabled    bool
+	eventChannel chan models.AppSwitchEvent
 }
 
 func NewTimeKeeperInMem() *TimeKeeper {
 	t := &TimeKeeper{
-		categoryStore:       inmem.NewCategoryStore(),
-		ruleStore:           inmem.NewRuleStore(),
-		appAggregration:     make(map[string]*models.AppAggregation),
-		categoryAggregation: make(map[models.CategoryId]*models.CategoryAggregation),
-		eventChannel:        make(chan models.AppSwitchEvent),
+		storage: data.NewStorage(
+			inmem.NewCategoryStore(),
+			inmem.NewRuleStore(),
+			inmem.NewAppAggregationStore(),
+			inmem.NewCategoryAggregationStore(),
+		),
+		eventChannel: make(chan models.AppSwitchEvent),
 	}
-	defaultResolver = NewDefaultCategoryResolver(t.ruleStore, t.categoryStore)
+	defaultResolver = NewDefaultCategoryResolver(t.storage.RuleStore, t.storage.CategoryStore)
 	return t
 }
 
@@ -61,6 +61,14 @@ func (t *TimeKeeper) StartTracking() {
 	}()
 }
 
+func (t *TimeKeeper) Report(date datatypes.Date) {
+	log.Println("-------------TimeKeeper Report-------------")
+	appAggr, _ := t.storage.AppAggregationStore.GetAppAggregationsByDate(date)
+	catAggr, _ := t.storage.CategoryAggregationStore.GetCategoryAggregationsByDate(date)
+	log.Printf("App Aggregation: %v\n", appAggr)
+	log.Printf("Category Aggregation: %v\n", catAggr)
+}
+
 func (t *TimeKeeper) PushEvent(event models.AppSwitchEvent) {
 	if t.IsEnabled() {
 		t.eventChannel <- event
@@ -74,33 +82,39 @@ func (t *TimeKeeper) handleEvent(event *models.AppSwitchEvent) {
 	}
 
 	log.Printf("Received event: %v\n", event)
-	elapsedTime := t.aggregateEvent(event)
-	log.Printf("App Aggregated: %v\n", t.appAggregration)
-	t.aggregateCategory(event, elapsedTime) // Call after aggregateEvent
-	log.Printf("Category Aggregated: %v\n", t.categoryAggregation)
+	t.aggregateEvent(event)
+	t.Report(datatypes.NewDate(event.Time))
 }
 
-func (t *TimeKeeper) aggregateEvent(event *models.AppSwitchEvent) int {
+func (t *TimeKeeper) aggregateEvent(event *models.AppSwitchEvent) {
 	if t.curAppEvent == nil {
 		t.curAppEvent = event
-		return 0
-	}
-
-	key := t.curAppEvent.GetEventKey()
-	aggr, ok := t.appAggregration[key]
-
-	if !ok {
-		aggr = &models.AppAggregation{
-			AppName:    t.curAppEvent.AppName,
-			SubAppName: t.curAppEvent.SubAppName,
-		}
-		t.appAggregration[key] = aggr
+		return
 	}
 
 	elapsedTime := int(event.Time.Sub(t.curAppEvent.Time).Seconds())
-	aggr.TimeElapsed += elapsedTime
+
+	// key := t.curAppEvent.GetEventKey()
+	// aggr, ok := t.appAggregration[key]
+
+	// if !ok {
+	// 	aggr = &models.AppAggregation{
+	// 		AppName: t.curAppEvent.AppName,
+	// 		// SubAppName: t.curAppEvent.SubAppName,
+	// 		Date: datatypes.NewDate(t.curAppEvent.Time),
+	// 	}
+	// 	t.appAggregration[key] = aggr
+	// }
+
+	// aggr.TimeElapsed += elapsedTime
+
+	_, err := t.storage.AppAggregationStore.AggregateAppEvent(t.curAppEvent, elapsedTime)
+	if err != nil {
+		log.Printf("Error aggregating app event: %v\n", err)
+	}
+
+	t.aggregateCategory(t.curAppEvent, elapsedTime) // Call after aggregateEvent
 	t.curAppEvent = event
-	return elapsedTime
 }
 
 func (t *TimeKeeper) aggregateCategory(event *models.AppSwitchEvent, elapsedTime int) {
@@ -110,16 +124,25 @@ func (t *TimeKeeper) aggregateCategory(event *models.AppSwitchEvent, elapsedTime
 		return
 	}
 
-	aggr, ok := t.categoryAggregation[cat.Id]
+	// aggr, ok := t.categoryAggregation[cat.Id]
 
-	if !ok {
-		aggr = &models.CategoryAggregation{
-			CategoryId: cat.Id,
-		}
-		t.categoryAggregation[cat.Id] = aggr
+	// if !ok {
+	// 	aggr = &models.CategoryAggregation{
+	// 		CategoryId: cat.Id,
+	// 		Date:       datatypes.NewDate(event.Time),
+	// 	}
+	// 	t.categoryAggregation[cat.Id] = aggr
+	// }
+
+	// aggr.TimeElapsed += elapsedTime
+
+	date := datatypes.NewDate(event.Time)
+	_, err = t.storage.CategoryAggregationStore.AggregateCategory(cat, date, elapsedTime)
+	if err != nil {
+		log.Printf("Error aggregating category: %v\n", err)
 	}
 
-	aggr.TimeElapsed += elapsedTime
+	// log.Printf("Category aggregated: %v\n", aggr)
 }
 
 func (t *TimeKeeper) getCategoryFromApp(event *models.AppSwitchEvent, resovler CategoryResolver) (models.Category, error) {

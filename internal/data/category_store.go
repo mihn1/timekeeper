@@ -1,8 +1,6 @@
 package data
 
-import (
-	"github.com/mihn1/timekeeper/internal/models"
-)
+import "github.com/mihn1/timekeeper/internal/models"
 
 type CategoryStore interface {
 	AddCategory(c models.Category) error

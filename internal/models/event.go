@@ -3,6 +3,8 @@ package models
 import (
 	"fmt"
 	"time"
+
+	"github.com/mihn1/timekeeper/internal/datatypes"
 )
 
 type AppSwitchEvent struct {
@@ -18,4 +20,8 @@ func (e AppSwitchEvent) String() string {
 
 func (e AppSwitchEvent) GetEventKey() string {
 	return e.AppName + "-" + e.SubAppName
+}
+
+func (e AppSwitchEvent) GetEventDate() datatypes.Date {
+	return datatypes.NewDate(e.Time)
 }
