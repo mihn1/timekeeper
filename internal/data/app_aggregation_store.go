@@ -7,7 +7,6 @@ import (
 
 type AppAggregationStore interface {
 	AggregateAppEvent(event *models.AppSwitchEvent, elapsedTime int) (*models.AppAggregation, error)
-	GetAppAggregation(key string, date datatypes.Date) (*models.AppAggregation, bool)
 	GetAppAggregations() ([]*models.AppAggregation, error)
 	GetAppAggregationsByDate(date datatypes.Date) ([]*models.AppAggregation, error)
 }

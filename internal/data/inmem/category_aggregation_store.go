@@ -7,24 +7,25 @@ import (
 )
 
 type CategoryAggregationStore struct {
-	Aggregations map[models.CategoryId]*models.CategoryAggregation
+	Aggregations map[string]*models.CategoryAggregation
 }
 
 func NewCategoryAggregationStore() *CategoryAggregationStore {
 	return &CategoryAggregationStore{
-		Aggregations: map[models.CategoryId]*models.CategoryAggregation{},
+		Aggregations: map[string]*models.CategoryAggregation{},
 	}
 }
 
 func (store *CategoryAggregationStore) AggregateCategory(cat models.Category, date datatypes.Date, elapsedTime int) (*models.CategoryAggregation, error) {
-	aggr, ok := store.Aggregations[cat.Id]
+	key := models.GetCategoryAggregationKey(cat.Id, date)
+	aggr, ok := store.Aggregations[key]
 
 	if !ok {
 		aggr = &models.CategoryAggregation{
 			CategoryId: cat.Id,
 			Date:       date,
 		}
-		store.Aggregations[cat.Id] = aggr
+		store.Aggregations[key] = aggr
 	}
 
 	aggr.TimeElapsed += elapsedTime
@@ -32,7 +33,8 @@ func (store *CategoryAggregationStore) AggregateCategory(cat models.Category, da
 }
 
 func (store *CategoryAggregationStore) GetCategoryAggregation(categoryId models.CategoryId, date datatypes.Date) (*models.CategoryAggregation, bool) {
-	aggr, ok := store.Aggregations[categoryId]
+	key := models.GetCategoryAggregationKey(categoryId, date)
+	aggr, ok := store.Aggregations[key]
 	return aggr, ok
 }
 

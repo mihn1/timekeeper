@@ -110,7 +110,7 @@ func (t *TimeKeeper) aggregateCategory(event *models.AppSwitchEvent, elapsedTime
 		return
 	}
 
-	log.Printf("Category resolved for %v: %v", event.GetEventKey(), cat.Name)
+	log.Printf("Category resolved for %v: %v", event.AppName, cat.Name)
 	_, err = t.storage.CategoryAggregationStore.AggregateCategory(cat, event.GetEventDate(), elapsedTime)
 	if err != nil {
 		log.Printf("Error aggregating category: %v\n", err)

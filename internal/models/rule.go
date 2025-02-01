@@ -9,10 +9,11 @@ type CategoryRule struct {
 	IsRegex    bool
 }
 
-// TODO: Rework this
+// TODO: Rework this to support additional data for each event
 func (r *CategoryRule) IsMatch(event *AppSwitchEvent) bool {
 	if r.Field == "" {
 		return r.AppName == event.AppName
 	}
-	return r.AppName == event.AppName && r.Expression == event.SubAppName
+	return r.AppName == event.AppName
+	// && r.Expression == event.SubAppName
 }
