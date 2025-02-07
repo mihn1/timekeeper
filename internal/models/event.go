@@ -14,7 +14,7 @@ type AppSwitchEvent struct {
 }
 
 func (e *AppSwitchEvent) String() string {
-	return fmt.Sprintf("App Changed: %s, Time: %s", e.AppName, e.Time.Format(time.DateTime))
+	return fmt.Sprintf("App Changed: %s, Time: %s, AdditionalData: %s", e.AppName, e.Time.Format(time.DateTime), e.AdditionalData)
 }
 
 func (e *AppSwitchEvent) GetEventDate() datatypes.Date {
