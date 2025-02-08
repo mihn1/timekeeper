@@ -15,10 +15,12 @@ void startTabObserver(int pid);
 import "C"
 import (
 	"log"
+	"strings"
 	"time"
-	"unsafe"
 
+	"github.com/mihn1/timekeeper/internal/constants"
 	"github.com/mihn1/timekeeper/internal/core"
+	"github.com/mihn1/timekeeper/internal/datatypes"
 	"github.com/mihn1/timekeeper/internal/models"
 )
 
@@ -26,12 +28,24 @@ var timekeeper *core.TimeKeeper
 
 //export goTabChangeCallback
 func goTabChangeCallback(info *C.char) {
-	tabInfo := C.GoString(info)
+	tabInfoRaw := C.GoString(info)
 	// log.Printf("CHROME TAB EVENT FROM GO: %s", tabInfo)
-	defer C.free(unsafe.Pointer(info)) // Free allocated memory
+
+	idx := strings.IndexByte(tabInfoRaw, '|')
+	if idx == -1 {
+		log.Println("Can't parse chrome's tab info")
+		return
+	}
+
+	url := tabInfoRaw[:idx]
+	title := tabInfoRaw[idx+1:]
+	tabInfo := datatypes.BrowserTabInfo{
+		Title: title,
+		URL:   url,
+	}
 
 	timekeeper.PushEvent(models.AppSwitchEvent{
-		AppName:        "Google Chrome",
+		AppName:        constants.GoogleChrome,
 		Time:           time.Now(),
 		AdditionalData: tabInfo,
 	})
@@ -42,7 +56,6 @@ func StartTabObserver(pid int, t *core.TimeKeeper) {
 		timekeeper = t
 	}
 
-	// Start listening for tab changes
 	log.Println("🚀 Listening for tab changes in Chrome...")
 	C.startTabObserver(C.int(pid))
 }

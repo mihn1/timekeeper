@@ -67,6 +67,7 @@ func (t *TimeKeeper) Report(date datatypes.Date) {
 	catAggrs, _ := t.storage.CategoryAggregationStore.GetCategoryAggregationsByDate(date)
 	log.Printf("App Aggregation: %v\n", appAggrs)
 	log.Printf("Category Aggregation: %v\n", catAggrs)
+	log.Println("------------------------------------------")
 }
 
 func (t *TimeKeeper) PushEvent(event models.AppSwitchEvent) {

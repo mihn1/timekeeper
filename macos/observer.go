@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mihn1/timekeeper/internal/constants"
 	"github.com/mihn1/timekeeper/internal/core"
 	"github.com/mihn1/timekeeper/internal/models"
 	"github.com/mihn1/timekeeper/macos/chrome"
@@ -37,7 +38,7 @@ func (o *Observer) StartObserving(t *core.TimeKeeper) error {
 			func(notification foundation.Notification) {
 				event, pid := getEvent(notification)
 
-				if event.AppName == "Google Chrome" {
+				if event.AppName == constants.GoogleChrome {
 					if !appListeners[event.AppName] {
 						chrome.StartTabObserver(pid, t)
 						appListeners[event.AppName] = true

@@ -4,7 +4,7 @@ const (
 	WORK CategoryId = iota
 	ENTERTAINMENT
 	UNDEFINED
-)
+) 
 
 type CategoryId int
 

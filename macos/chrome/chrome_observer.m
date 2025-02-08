@@ -11,7 +11,7 @@ NSString *getTabData() {
                       "set frontTab to active tab of front window\n"
                       "set tabTitle to title of frontTab\n"
                       "set tabURL to URL of frontTab\n"
-                      "return tabTitle & \" | \" & tabURL\n"
+                      "return tabURL & \"|\" & tabTitle\n"
                       "end tell";
 
   NSAppleScript *appleScript = [[NSAppleScript alloc] initWithSource:script];
@@ -21,6 +21,7 @@ NSString *getTabData() {
 
   if (errorInfo) {
     NSLog(@"AppleScript Error: %@", errorInfo);
+    return @"";
   }
 
   return [result stringValue];
@@ -93,13 +94,12 @@ void tabChangeCallback(AXObserverRef observer, AXUIElementRef element,
   }
 
   NSString *result = getTabData();
-  // NSLog(@"✅ Notification: %@ - Role: %@ -> %@", notification, role, result);
-  const char *finalInfo = strdup([result UTF8String]);
+  char *finalInfo = strdup([result UTF8String]);
 
-  dispatch_async(dispatch_get_main_queue(), ^{
-    goTabChangeCallback(finalInfo);
-  });
-  
+  // dispatch_async(dispatch_get_main_queue(), ^{
+  goTabChangeCallback(finalInfo);
+  free(finalInfo);
+  // });
 }
 
 void registerAllAXEvents(AXObserverRef observer, AXUIElementRef appElement) {
