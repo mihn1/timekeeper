@@ -62,12 +62,12 @@ func (t *TimeKeeper) StartTracking() {
 }
 
 func (t *TimeKeeper) Report(date datatypes.Date) {
-	log.Println("-------------TimeKeeper Report-------------")
+	log.Printf("-------------TimeKeeper Report for %s-------------\n", date)
 	appAggrs, _ := t.storage.AppAggregationStore.GetAppAggregationsByDate(date)
 	catAggrs, _ := t.storage.CategoryAggregationStore.GetCategoryAggregationsByDate(date)
 	log.Printf("App Aggregation: %v\n", appAggrs)
 	log.Printf("Category Aggregation: %v\n", catAggrs)
-	log.Println("------------------------------------------")
+	log.Println("-----------------------------------------------------------")
 }
 
 func (t *TimeKeeper) PushEvent(event models.AppSwitchEvent) {

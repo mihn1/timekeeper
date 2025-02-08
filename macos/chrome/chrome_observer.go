@@ -37,7 +37,7 @@ func goTabChangeCallback(info *C.char) {
 
 	timekeeper.PushEvent(models.AppSwitchEvent{
 		AppName:        constants.GoogleChrome,
-		Time:           time.Now(),
+		Time:           time.Now().UTC(),
 		AdditionalData: tabInfo,
 	})
 }

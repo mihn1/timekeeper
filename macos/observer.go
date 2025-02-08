@@ -41,7 +41,7 @@ func (o *Observer) StartObserving(t *core.TimeKeeper) error {
 				if event.AppName == constants.GoogleChrome {
 					if !appListeners[event.AppName] {
 						chrome.StartTabObserver(pid, t)
-						appListeners[event.AppName] = true
+						appListeners[constants.GoogleChrome] = true
 					}
 				}
 
