@@ -1,16 +1,7 @@
 package chrome
 
 /*
-#cgo CFLAGS: -x objective-c
-#cgo LDFLAGS: -framework Cocoa -framework ApplicationServices
-#include <stdio.h>
-#include <stdlib.h> // Required for free()
-
-// Import function from Objective-C file
 void startTabObserver(int pid);
-
-// Forward declare the Go function
-// extern void goTabChangeCallback(const char* info);
 */
 import "C"
 import (

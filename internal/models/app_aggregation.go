@@ -10,7 +10,7 @@ type AppAggregation struct {
 	AppName        string
 	AdditionalData interface{} // E.g. title of a browser tab or url // TODO: redesign this to support multiple fields
 	Date           datatypes.Date
-	TimeElapsed    int
+	TimeElapsed    int64 // in milliseconds
 }
 
 func GetAppAggregationKey(event *AppSwitchEvent) string {
@@ -19,5 +19,5 @@ func GetAppAggregationKey(event *AppSwitchEvent) string {
 
 func (a AppAggregation) String() string {
 	fullAppName := a.AppName
-	return fmt.Sprintf("%s: %ds", fullAppName, a.TimeElapsed)
+	return fmt.Sprintf("%s: %dms", fullAppName, a.TimeElapsed)
 }

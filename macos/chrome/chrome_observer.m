@@ -1,8 +1,8 @@
-#import <ApplicationServices/ApplicationServices.h>
+// #import <ApplicationServices/ApplicationServices.h>
 #import <Cocoa/Cocoa.h>
-#include <CoreFoundation/CoreFoundation.h>
-#include <Foundation/Foundation.h>
-#include <stdlib.h>
+// #include <CoreFoundation/CoreFoundation.h>
+// #include <Foundation/Foundation.h>
+// #include <stdlib.h>
 extern void goTabChangeCallback(const char *tabInfo);
 
 NSString *getTabData() {

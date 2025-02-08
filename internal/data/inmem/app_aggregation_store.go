@@ -16,7 +16,7 @@ func NewAppAggregationStore() *AppAggregationStore {
 	}
 }
 
-func (store *AppAggregationStore) AggregateAppEvent(event *models.AppSwitchEvent, elapsedTime int) (*models.AppAggregation, error) {
+func (store *AppAggregationStore) AggregateAppEvent(event *models.AppSwitchEvent, elapsedTime int64) (*models.AppAggregation, error) {
 	key := models.GetAppAggregationKey(event)
 	aggr, ok := store.Aggregations[key]
 

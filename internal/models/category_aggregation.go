@@ -10,11 +10,11 @@ import (
 type CategoryAggregation struct {
 	CategoryId  CategoryId
 	Date        datatypes.Date
-	TimeElapsed int
+	TimeElapsed int64 // in miliseconds
 }
 
 func (c CategoryAggregation) String() string {
-	return fmt.Sprintf("%d: %ds", c.CategoryId, c.TimeElapsed)
+	return fmt.Sprintf("%d: %dms", c.CategoryId, c.TimeElapsed)
 }
 
 func GetCategoryAggregationKey(categoryId CategoryId, date datatypes.Date) string {

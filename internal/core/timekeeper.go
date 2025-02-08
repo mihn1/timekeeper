@@ -93,7 +93,7 @@ func (t *TimeKeeper) aggregateEvent(event *models.AppSwitchEvent) {
 		return
 	}
 
-	elapsedTime := int(event.Time.Sub(t.curAppEvent.Time).Seconds())
+	elapsedTime := event.Time.Sub(t.curAppEvent.Time).Milliseconds()
 
 	_, err := t.storage.AppAggregationStore.AggregateAppEvent(t.curAppEvent, elapsedTime)
 	if err != nil {
@@ -104,7 +104,7 @@ func (t *TimeKeeper) aggregateEvent(event *models.AppSwitchEvent) {
 	t.curAppEvent = event
 }
 
-func (t *TimeKeeper) aggregateCategory(event *models.AppSwitchEvent, elapsedTime int) {
+func (t *TimeKeeper) aggregateCategory(event *models.AppSwitchEvent, elapsedTime int64) {
 	cat, err := t.getCategoryFromApp(event, defaultResolver)
 	if err != nil {
 		log.Printf("Error aggregating category: %v\n", err)

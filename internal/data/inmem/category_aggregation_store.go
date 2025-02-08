@@ -16,7 +16,7 @@ func NewCategoryAggregationStore() *CategoryAggregationStore {
 	}
 }
 
-func (store *CategoryAggregationStore) AggregateCategory(cat models.Category, date datatypes.Date, elapsedTime int) (*models.CategoryAggregation, error) {
+func (store *CategoryAggregationStore) AggregateCategory(cat models.Category, date datatypes.Date, elapsedTime int64) (*models.CategoryAggregation, error) {
 	key := models.GetCategoryAggregationKey(cat.Id, date)
 	aggr, ok := store.Aggregations[key]
 
