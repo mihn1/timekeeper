@@ -11,7 +11,6 @@ import (
 
 	"github.com/mihn1/timekeeper/internal/constants"
 	"github.com/mihn1/timekeeper/internal/core"
-	"github.com/mihn1/timekeeper/internal/datatypes"
 	"github.com/mihn1/timekeeper/internal/models"
 )
 
@@ -30,14 +29,14 @@ func goTabChangeCallback(info *C.char) {
 
 	url := tabInfoRaw[:idx]
 	title := tabInfoRaw[idx+1:]
-	tabInfo := datatypes.BrowserTabInfo{
-		Title: title,
-		URL:   url,
+	tabInfo := map[string]string{
+		constants.KEY_BROWSER_URL:   url,
+		constants.KEY_BROWSER_TITLE: title,
 	}
 
 	timekeeper.PushEvent(models.AppSwitchEvent{
-		AppName:        constants.GoogleChrome,
-		Time:           time.Now().UTC(),
+		AppName:        constants.GOOGLE_CHROME,
+		StartTime:      time.Now().UTC(),
 		AdditionalData: tabInfo,
 	})
 }

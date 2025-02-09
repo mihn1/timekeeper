@@ -3,6 +3,7 @@ package core
 import (
 	"log"
 
+	"github.com/mihn1/timekeeper/internal/core/resolvers"
 	"github.com/mihn1/timekeeper/internal/data"
 	"github.com/mihn1/timekeeper/internal/data/inmem"
 	"github.com/mihn1/timekeeper/internal/datatypes"
@@ -14,7 +15,7 @@ const (
 )
 
 var (
-	defaultResolver CategoryResolver
+	defaultResolver resolvers.CategoryResolver
 )
 
 type TimeKeeper struct {
@@ -34,7 +35,6 @@ func NewTimeKeeperInMem() *TimeKeeper {
 		),
 		eventChannel: make(chan models.AppSwitchEvent),
 	}
-	defaultResolver = NewDefaultCategoryResolver(t.storage.RuleStore, t.storage.CategoryStore)
 	return t
 }
 
@@ -53,6 +53,8 @@ func (t *TimeKeeper) StartTracking() {
 		// TODO: stop the event listener
 	}
 
+	defaultResolver = resolvers.NewDefaultCategoryResolver(t.storage.RuleStore, t.storage.CategoryStore)
+
 	// Start listening for events
 	go func() {
 		for event := range t.eventChannel {
@@ -67,7 +69,7 @@ func (t *TimeKeeper) Report(date datatypes.Date) {
 	catAggrs, _ := t.storage.CategoryAggregationStore.GetCategoryAggregationsByDate(date)
 	log.Printf("App Aggregation: %v\n", appAggrs)
 	log.Printf("Category Aggregation: %v\n", catAggrs)
-	log.Println("-----------------------------------------------------------")
+	log.Println("-------------------------------------------------------------------------------------------------")
 }
 
 func (t *TimeKeeper) PushEvent(event models.AppSwitchEvent) {
@@ -77,23 +79,29 @@ func (t *TimeKeeper) PushEvent(event models.AppSwitchEvent) {
 }
 
 func (t *TimeKeeper) handleEvent(event *models.AppSwitchEvent) {
-	// TODO: gracefully handle the case when the timekeeper is disabled
-	if !t.isEnabled {
-		return
-	}
-
 	log.Printf("Received event: %v\n", event)
-	t.aggregateEvent(event)
-	t.Report(datatypes.NewDate(event.Time))
-}
 
-func (t *TimeKeeper) aggregateEvent(event *models.AppSwitchEvent) {
 	if t.curAppEvent == nil {
 		t.curAppEvent = event
 		return
 	}
 
-	elapsedTime := event.Time.Sub(t.curAppEvent.Time).Milliseconds()
+	// TODO: gracefully handle the case when the timekeeper is disabled
+	if !t.isEnabled {
+		return
+	}
+
+	t.aggregateEvent(event)
+
+	// TODO: store events
+	t.curAppEvent.EndTime = event.StartTime
+	t.curAppEvent = event
+
+	t.Report(datatypes.NewDate(event.StartTime))
+}
+
+func (t *TimeKeeper) aggregateEvent(event *models.AppSwitchEvent) {
+	elapsedTime := event.StartTime.Sub(t.curAppEvent.StartTime).Milliseconds()
 
 	_, err := t.storage.AppAggregationStore.AggregateAppEvent(t.curAppEvent, elapsedTime)
 	if err != nil {
@@ -101,24 +109,23 @@ func (t *TimeKeeper) aggregateEvent(event *models.AppSwitchEvent) {
 	}
 
 	t.aggregateCategory(t.curAppEvent, elapsedTime) // Call after aggregateEvent
-	t.curAppEvent = event
 }
 
 func (t *TimeKeeper) aggregateCategory(event *models.AppSwitchEvent, elapsedTime int64) {
-	cat, err := t.getCategoryFromApp(event, defaultResolver)
+	catId, err := defaultResolver.ResolveCategory(event)
 	if err != nil {
-		log.Printf("Error aggregating category: %v\n", err)
+		log.Printf("Error resolving category: %v\n", err)
+	}
+
+	cat, err := t.storage.CategoryStore.GetCategory(catId)
+	if err != nil {
+		log.Printf("Error getting category: %v\n", err)
 		return
 	}
 
-	log.Printf("Category resolved for %v: %v", event.AppName, cat.Name)
+	log.Printf("%v resolved for %v - %v", cat.Name, event.AppName, event.AdditionalData)
 	_, err = t.storage.CategoryAggregationStore.AggregateCategory(cat, event.GetEventDate(), elapsedTime)
 	if err != nil {
 		log.Printf("Error aggregating category: %v\n", err)
 	}
-}
-
-func (t *TimeKeeper) getCategoryFromApp(event *models.AppSwitchEvent, resovler CategoryResolver) (models.Category, error) {
-	cat, err := resovler.ResolveCategory(event)
-	return cat, err
 }

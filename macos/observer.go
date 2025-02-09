@@ -38,10 +38,10 @@ func (o *Observer) StartObserving(t *core.TimeKeeper) error {
 			func(notification foundation.Notification) {
 				event, pid := getEvent(notification)
 
-				if event.AppName == constants.GoogleChrome {
+				if event.AppName == constants.GOOGLE_CHROME {
 					if !appListeners[event.AppName] {
 						chrome.StartTabObserver(pid, t)
-						appListeners[constants.GoogleChrome] = true
+						appListeners[constants.GOOGLE_CHROME] = true
 					}
 				}
 
@@ -61,8 +61,8 @@ func getEvent(notification foundation.Notification) (models.AppSwitchEvent, int)
 
 	event := models.AppSwitchEvent{
 		AppName:        appName,
-		Time:           time.Now().UTC(),
-		AdditionalData: desc,
+		StartTime:      time.Now().UTC(),
+		AdditionalData: map[string]string{constants.KEY_APP_DESC: desc},
 	}
 
 	return event, int(runningApp.ProcessIdentifier())

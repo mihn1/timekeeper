@@ -1,14 +1,10 @@
-package core
+package resolvers
 
 import (
 	"github.com/mihn1/timekeeper/internal/data"
 	"github.com/mihn1/timekeeper/internal/models"
+	"golang.org/x/exp/slices"
 )
-
-// resolve category from an app switch event
-type CategoryResolver interface {
-	ResolveCategory(event *models.AppSwitchEvent) (models.Category, error)
-}
 
 type DefaultCategoryResolver struct {
 	RuleStore     data.RuleStore
@@ -22,25 +18,26 @@ func NewDefaultCategoryResolver(ruleStore data.RuleStore, categoryStore data.Cat
 	}
 }
 
-func (r *DefaultCategoryResolver) ResolveCategory(event *models.AppSwitchEvent) (models.Category, error) {
-	// get the rules for the app
+func (r *DefaultCategoryResolver) ResolveCategory(event *models.AppSwitchEvent) (models.CategoryId, error) {
 	rules, err := r.RuleStore.GetRulesByApp(event.AppName)
 	if err != nil {
-		return models.Category{}, err
+		return models.UNDEFINED, err
 	}
 
-	// if there are no rules, return the default category
-	if len(rules) == 0 {
-		return r.CategoryStore.GetCategory(models.UNDEFINED)
-	}
+	slices.SortStableFunc(rules, models.CmpRules)
 
 	// iterate through the rules to find the first match
 	for _, rule := range rules {
-		if rule.IsMatch(event) {
-			return r.CategoryStore.GetCategory(rule.CategoryId)
+		match, err := rule.IsMatch(event)
+		if err != nil {
+			return models.UNDEFINED, err
+		}
+
+		if match {
+			return rule.CategoryId, nil
 		}
 	}
 
 	// if no rules match, return the default category
-	return r.CategoryStore.GetCategory(models.UNDEFINED)
+	return models.UNDEFINED, nil
 }

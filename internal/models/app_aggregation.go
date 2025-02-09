@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mihn1/timekeeper/internal/datatypes"
+	"github.com/mihn1/timekeeper/utils"
 )
 
 type AppAggregation struct {
@@ -17,7 +18,7 @@ func GetAppAggregationKey(event *AppSwitchEvent) string {
 	return event.AppName + "-" + event.GetEventDate().String()
 }
 
-func (a AppAggregation) String() string {
+func (a *AppAggregation) String() string {
 	fullAppName := a.AppName
-	return fmt.Sprintf("%s: %dms", fullAppName, a.TimeElapsed)
+	return fmt.Sprintf("%s: %v", fullAppName, utils.FormatTimeElapsed(a.TimeElapsed))
 }

@@ -1,12 +1,13 @@
 package models
 
 const (
-	WORK CategoryId = iota
-	ENTERTAINMENT
-	UNDEFINED
-) 
+	WORK          CategoryId = "work"
+	ENTERTAINMENT            = "entertainment"
+	PERSONAL                 = "personal"
+	UNDEFINED                = "undefined"
+)
 
-type CategoryId int
+type CategoryId string
 
 type Category struct {
 	Id             CategoryId

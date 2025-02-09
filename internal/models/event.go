@@ -9,14 +9,15 @@ import (
 
 type AppSwitchEvent struct {
 	AppName        string
-	Time           time.Time
-	AdditionalData interface{}
+	StartTime      time.Time
+	EndTime        time.Time
+	AdditionalData map[string]string
 }
 
 func (e *AppSwitchEvent) String() string {
-	return fmt.Sprintf("App Changed: %s, Time: %s, AdditionalData: %s", e.AppName, e.Time.Format(time.DateTime), e.AdditionalData)
+	return fmt.Sprintf("App Changed: %s, Time: %s, AdditionalData: %s", e.AppName, e.StartTime.Format(time.DateTime), e.AdditionalData)
 }
 
 func (e *AppSwitchEvent) GetEventDate() datatypes.Date {
-	return datatypes.NewDate(e.Time)
+	return datatypes.NewDate(e.StartTime)
 }
