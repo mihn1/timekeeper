@@ -8,6 +8,8 @@ const (
 )
 
 const (
+	ALL_APPS = "All_Apps"
+
 	// AppNameChrome is the name of the Chrome application
 	GOOGLE_CHROME = "Google Chrome"
 	SAFARI        = "Safari"
