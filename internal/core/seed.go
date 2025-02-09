@@ -15,10 +15,11 @@ func SeedDataInMem(t *TimeKeeper) {
 	t.storage.RuleStore.AddRule(models.CategoryRule{RuleId: 2, CategoryId: models.WORK, AppName: "Code"})
 	t.storage.RuleStore.AddRule(models.CategoryRule{RuleId: 3, CategoryId: models.WORK, AppName: "Ghostty"})
 	t.storage.RuleStore.AddRule(models.CategoryRule{RuleId: 4, CategoryId: models.PERSONAL, AppName: "ChatGPT"})
+	t.storage.RuleStore.AddRule(models.CategoryRule{RuleId: 5, CategoryId: models.PERSONAL, AppName: "Notion"})
 
 	// Rules based on chromes' tabs
 	t.storage.RuleStore.AddRule(models.CategoryRule{
-		RuleId:            5,
+		RuleId:            6,
 		CategoryId:        models.WORK,
 		AppName:           constants.GOOGLE_CHROME,
 		AdditionalDataKey: constants.KEY_BROWSER_URL,
@@ -26,7 +27,7 @@ func SeedDataInMem(t *TimeKeeper) {
 		Expression:        "github.com"})
 
 	t.storage.RuleStore.AddRule(models.CategoryRule{
-		RuleId:            6,
+		RuleId:            7,
 		CategoryId:        models.PERSONAL,
 		AppName:           constants.GOOGLE_CHROME,
 		AdditionalDataKey: constants.KEY_BROWSER_URL,
@@ -34,7 +35,7 @@ func SeedDataInMem(t *TimeKeeper) {
 		Expression:        "chatgpt.com"})
 
 	t.storage.RuleStore.AddRule(models.CategoryRule{
-		RuleId:            7,
+		RuleId:            8,
 		CategoryId:        models.WORK,
 		AppName:           constants.GOOGLE_CHROME,
 		AdditionalDataKey: constants.KEY_BROWSER_URL,
@@ -42,7 +43,7 @@ func SeedDataInMem(t *TimeKeeper) {
 		Expression:        "developer"})
 
 	t.storage.RuleStore.AddRule(models.CategoryRule{
-		RuleId:            8,
+		RuleId:            9,
 		CategoryId:        models.WORK,
 		AppName:           constants.GOOGLE_CHROME,
 		AdditionalDataKey: constants.KEY_BROWSER_TITLE,
@@ -51,7 +52,7 @@ func SeedDataInMem(t *TimeKeeper) {
 		IsRegex:           true})
 
 	t.storage.RuleStore.AddRule(models.CategoryRule{
-		RuleId:            9,
+		RuleId:            10,
 		CategoryId:        models.ENTERTAINMENT,
 		AppName:           constants.GOOGLE_CHROME,
 		AdditionalDataKey: constants.KEY_BROWSER_URL,

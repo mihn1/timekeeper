@@ -33,7 +33,7 @@ func (c *CategoryStore) GetCategory(id models.CategoryId) (models.Category, erro
 
 	category, ok := c.data[id]
 	if !ok {
-		return models.Category{}, fmt.Errorf("category with id %d not found", id)
+		return models.Category{}, fmt.Errorf("category with id %s not found", id)
 	}
 
 	return category, nil
