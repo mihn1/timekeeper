@@ -2,30 +2,37 @@ package macos
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/mihn1/timekeeper/internal/constants"
 	"github.com/mihn1/timekeeper/internal/core"
 	"github.com/mihn1/timekeeper/internal/models"
-	"github.com/mihn1/timekeeper/macos/chrome"
+	"github.com/mihn1/timekeeper/macos/chromium"
 	"github.com/progrium/darwinkit/macos"
 	"github.com/progrium/darwinkit/macos/appkit"
 	"github.com/progrium/darwinkit/macos/foundation"
 )
 
-type Observer struct{}
+type Observer struct {
+	timekeeper       *core.TimeKeeper
+	browserListeners map[string]bool
+	mu               sync.Mutex
+}
 
-func NewObserver() *Observer {
-	return &Observer{}
+func NewObserver(t *core.TimeKeeper) *Observer {
+	return &Observer{
+		timekeeper:       t,
+		browserListeners: make(map[string]bool),
+		mu:               sync.Mutex{},
+	}
 }
 
 var (
 	applicationKey foundation.String = foundation.String_StringWithString("NSWorkspaceApplicationKey")
 )
 
-func (o *Observer) StartObserving(t *core.TimeKeeper) error {
-	appListeners := make(map[string]bool) // App name -> isListening
-
+func (o *Observer) StartObserving() error {
 	macos.RunApp(func(app appkit.Application, delegate *appkit.ApplicationDelegate) {
 		fmt.Println("Starting")
 
@@ -39,13 +46,12 @@ func (o *Observer) StartObserving(t *core.TimeKeeper) error {
 				event, pid := getEvent(notification)
 
 				if event.AppName == constants.GOOGLE_CHROME {
-					if !appListeners[event.AppName] {
-						chrome.StartTabObserver(pid, t)
-						appListeners[constants.GOOGLE_CHROME] = true
-					}
+					o.registerChromiumObserver(pid, constants.GOOGLE_CHROME)
+				} else if event.AppName == constants.BRAVE {
+					o.registerChromiumObserver(pid, constants.BRAVE)
 				}
 
-				t.PushEvent(event)
+				o.timekeeper.PushEvent(event)
 			},
 		)
 	})
@@ -66,4 +72,13 @@ func getEvent(notification foundation.Notification) (models.AppSwitchEvent, int)
 	}
 
 	return event, int(runningApp.ProcessIdentifier())
+}
+
+func (o *Observer) registerChromiumObserver(pid int, browserName string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if !o.browserListeners[browserName] {
+		chromium.StartTabObserver(pid, browserName, o.timekeeper)
+		o.browserListeners[browserName] = true
+	}
 }

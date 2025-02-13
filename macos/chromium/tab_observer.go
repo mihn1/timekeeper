@@ -1,13 +1,18 @@
-package chrome
+package chromium
 
 /*
-void startTabObserver(int pid);
+#include <stdio.h>
+#include <stdlib.h>
+
+void startTabObserver(int pid, char * name);
 */
 import "C"
 import (
 	"log"
 	"strings"
+	"sync"
 	"time"
+	"unsafe"
 
 	"github.com/mihn1/timekeeper/internal/constants"
 	"github.com/mihn1/timekeeper/internal/core"
@@ -15,11 +20,12 @@ import (
 )
 
 var timekeeper *core.TimeKeeper
+var mu sync.Mutex = sync.Mutex{}
 
 //export goTabChangeCallback
-func goTabChangeCallback(info *C.char) {
+func goTabChangeCallback(info *C.char, browserName *C.char) {
 	tabInfoRaw := C.GoString(info)
-	// log.Printf("CHROME TAB EVENT FROM GO: %s", tabInfo)
+	// log.Printf("TAB EVENT FROM GO: %s", tabInfo)
 
 	idx := strings.IndexByte(tabInfoRaw, '|')
 	if idx == -1 {
@@ -35,17 +41,23 @@ func goTabChangeCallback(info *C.char) {
 	}
 
 	timekeeper.PushEvent(models.AppSwitchEvent{
-		AppName:        constants.GOOGLE_CHROME,
+		AppName:        C.GoString(browserName),
 		StartTime:      time.Now().UTC(),
 		AdditionalData: tabInfo,
 	})
 }
 
-func StartTabObserver(pid int, t *core.TimeKeeper) {
+func StartTabObserver(pid int, browser string, t *core.TimeKeeper) {
+	mu.Lock()
 	if timekeeper == nil {
 		timekeeper = t
 	}
+	mu.Unlock()
 
-	log.Println("🚀 Listening for tab changes in Chrome...")
-	C.startTabObserver(C.int(pid))
+	log.Printf("🚀 Listening for tab changes in %v...", browser)
+
+	cBrowser := C.CString(browser)
+	defer C.free(unsafe.Pointer(cBrowser))
+
+	C.startTabObserver(C.int(pid), cBrowser)
 }

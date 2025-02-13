@@ -3,16 +3,22 @@
 // #include <CoreFoundation/CoreFoundation.h>
 // #include <Foundation/Foundation.h>
 // #include <stdlib.h>
-extern void goTabChangeCallback(const char *tabInfo);
+extern void goTabChangeCallback(const char* tabInfo, const char* browserName);
 
-NSString *getTabData() {
+// Define a struct to hold the observer context
+typedef struct {
+  char *name;
+} ObserverContext;
+
+NSString *getTabData(const char *browserName) {
   // Run AppleScript to get tab details
-  NSString *script = @"tell application \"Google Chrome\"\n"
+  NSString *script = [NSString stringWithFormat:
+                      @"tell application \"%s\"\n"
                       "set frontTab to active tab of front window\n"
                       "set tabTitle to title of frontTab\n"
                       "set tabURL to URL of frontTab\n"
                       "return tabURL & \"|\" & tabTitle\n"
-                      "end tell";
+                      "end tell", browserName];
 
   NSAppleScript *appleScript = [[NSAppleScript alloc] initWithSource:script];
   NSDictionary *errorInfo = nil;
@@ -20,8 +26,8 @@ NSString *getTabData() {
       [appleScript executeAndReturnError:&errorInfo];
 
   if (errorInfo) {
-    NSLog(@"AppleScript Error: %@", errorInfo);
-    return @"";
+    NSLog(@"AppleScript Error for %s: %@", browserName, errorInfo);
+    return NULL;
   }
 
   return [result stringValue];
@@ -64,6 +70,19 @@ AXUIElementRef findElementByRole(AXUIElementRef element,
 // Callback function triggered when the active tab changes
 void tabChangeCallback(AXObserverRef observer, AXUIElementRef element,
                        CFStringRef notification, void *context) {
+  if (!context) {
+    printf("❌ Context is NULL. Ignoring event.\n");
+    return;
+  }
+
+   // Cast the context back to ObserverContext
+    ObserverContext* ctx = (ObserverContext*)context;
+    
+    if (!ctx->name) {
+        printf("❌ Context->name is NULL. Ignoring event.\n");
+        return;
+    }
+
   NSString *role = NULL;
   CFTypeRef roleValue = NULL;
   if (AXUIElementCopyAttributeValue(element, kAXRoleAttribute, &roleValue) ==
@@ -93,18 +112,25 @@ void tabChangeCallback(AXObserverRef observer, AXUIElementRef element,
     }
   }
 
-  NSString *result = getTabData();
+  NSString *result = getTabData(ctx->name);
+  if (!result) {
+    return;
+  }
+
   char *finalInfo = strdup([result UTF8String]);
+  char *browserName = strdup(ctx->name);
 
   // dispatch_async(dispatch_get_main_queue(), ^{
-  goTabChangeCallback(finalInfo);
+  goTabChangeCallback(finalInfo, browserName);
   free(finalInfo);
+  free(browserName);
   // });
 }
 
-void registerAllAXEvents(AXObserverRef observer, AXUIElementRef appElement) {
+void registerAllAXEvents(AXObserverRef observer, AXUIElementRef appElement,
+                         ObserverContext *context) {
   CFStringRef events[] = {
-      kAXTitleChangedNotification, 
+      kAXTitleChangedNotification,
       kAXFocusedUIElementChangedNotification,
       kAXFocusedWindowChangedNotification,
   };
@@ -112,30 +138,53 @@ void registerAllAXEvents(AXObserverRef observer, AXUIElementRef appElement) {
   size_t eventCount = sizeof(events) / sizeof(events[0]);
 
   for (size_t i = 0; i < eventCount; i++) {
-    if (AXObserverAddNotification(observer, appElement, events[i], NULL) ==
+    if (AXObserverAddNotification(observer, appElement, events[i], context) ==
         kAXErrorSuccess) {
       NSLog(@"✅ Listening for event: %@", events[i]);
     } else {
+      free(context->name);
+      free(context);
       NSLog(@"❌ Failed to observe event: %@", events[i]);
     }
   }
 }
 
-// Observer chrome
-void startTabObserver(int pid) {
-  NSLog(@"🚀 Starting Tab Observer for Chrome (PID: %d)", pid);
+void stopObserver(AXObserverRef observer, void* context) {
+    if (!observer) return;
 
-  // Get Chrome application AXUIElement
+    printf("🛑 Stopping observer and freeing memory...\n");
+
+    // Free context memory
+    ObserverContext* ctx = (ObserverContext*)context;
+    if (ctx) {
+        free(ctx->name);
+        free(ctx);
+    }
+
+    // Remove observer from the run loop
+    CFRunLoopRemoveSource(CFRunLoopGetCurrent(), AXObserverGetRunLoopSource(observer), kCFRunLoopDefaultMode);
+    CFRelease(observer);
+}
+
+// Observer tab changes in the given browser
+void startTabObserver(int pid, const char *browserName) {
   AXUIElementRef appElement = AXUIElementCreateApplication(pid);
   if (!appElement) {
-    NSLog(@"❌ Failed to get Chrome AXUIElement");
+    NSLog(@"❌ Failed to get main app AXUIElement");
     return;
   }
+
+  // Allocate memory for context and store the name
+  ObserverContext *context = (ObserverContext *)malloc(sizeof(ObserverContext));
+  context->name =
+      strdup(browserName); // Copy name string to avoid memory issues
 
   // Set up the observer
   AXObserverRef observer;
   if (AXObserverCreate(pid, tabChangeCallback, &observer) != kAXErrorSuccess) {
     NSLog(@"❌ Failed to create AXObserver");
+    free(context->name);
+    free(context);
     CFRelease(appElement);
     return;
   }
@@ -145,7 +194,7 @@ void startTabObserver(int pid) {
                      AXObserverGetRunLoopSource(observer),
                      kCFRunLoopDefaultMode);
 
-  registerAllAXEvents(observer, appElement);
+  registerAllAXEvents(observer, appElement, context);
 
   // CFRelease(observer);
   CFRelease(appElement);

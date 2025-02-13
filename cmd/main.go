@@ -10,8 +10,8 @@ func main() {
 	core.SeedDataInMem(timekeeper)
 
 	timekeeper.StartTracking()
-	var observer core.Observer = macos.NewObserver()
-	go observer.StartObserving(timekeeper)
+	observer := macos.NewObserver(timekeeper)
+	go observer.StartObserving()
 
 	select {}
 }
