@@ -91,6 +91,11 @@ func (t *TimeKeeper) handleEvent(event *models.AppSwitchEvent) {
 		return
 	}
 
+	if isSameEvent(t.curAppEvent, event) {
+		log.Printf("Same event detected: %v\n", event)
+		return
+	}
+
 	t.aggregateEvent(event)
 
 	// TODO: store events
@@ -128,4 +133,19 @@ func (t *TimeKeeper) aggregateCategory(event *models.AppSwitchEvent, elapsedTime
 	if err != nil {
 		log.Printf("Error aggregating category: %v\n", err)
 	}
+}
+
+func isSameEvent(e1, e2 *models.AppSwitchEvent) bool {
+	if e1.AppName != e2.AppName {
+		return false
+	}
+
+	for key, val := range e1.AdditionalData {
+		if val2, ok := e2.AdditionalData[key]; !ok || val != val2 {
+			return false
+		}
+	}
+
+	// If the events are within 60 seconds of each other, consider them the same event
+	return e1.StartTime.Sub(e2.StartTime).Seconds() <= 60
 }
