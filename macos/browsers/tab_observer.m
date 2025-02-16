@@ -6,6 +6,7 @@ extern void goTabChangeCallback(const char *tabInfo, const char *browserName);
 // Define a struct to hold the observer context
 typedef struct {
   char *name;
+  char *script;
 } ObserverContext;
 
 typedef struct {
@@ -65,6 +66,7 @@ void cleanupObserver(ObserverData *data) {
   
   if (data->context) {
     free(data->context->name);
+    free(data->context->script);
     free(data->context);
   }
   
@@ -83,14 +85,9 @@ void cleanupAllObservers(void) {
 }
 
 // Returns tab data via AppleScript.
-NSString *getTabData(const char *browserName) {
-  NSString *script = [NSString stringWithFormat:@"tell application \"%s\"\n"
-                        "set frontTab to active tab of front window\n"
-                        "set tabTitle to title of frontTab\n"
-                        "set tabURL to URL of frontTab\n"
-                        "return tabURL & \"|\" & tabTitle\n"
-                        "end tell", browserName];
-  NSAppleScript *appleScript = [[NSAppleScript alloc] initWithSource:script];
+NSString *getTabData(const char *browserName, const char *script) {
+  NSString *nsScript = [NSString stringWithUTF8String:script];
+  NSAppleScript *appleScript = [[NSAppleScript alloc] initWithSource:nsScript];
   NSDictionary *errorInfo = nil;
   NSAppleEventDescriptor *result = [appleScript executeAndReturnError:&errorInfo];
   if (errorInfo) {
@@ -162,7 +159,7 @@ void tabChangeCallback(AXObserverRef observer, AXUIElementRef element,
     }
   }
   
-  NSString *result = getTabData(ctx->name);
+  NSString *result = getTabData(ctx->name, ctx->script);
   if (!result)
     return;
   
@@ -194,7 +191,7 @@ void registerAllAXEvents(AXObserverRef observer, AXUIElementRef appElement,
 }
 
 // Starts the observer for a given application.
-void startTabObserver(int pid, const char *browserName) {
+void startTabObserver(int pid, const char *browserName, const char *script) {
   AXUIElementRef appElement = AXUIElementCreateApplication(pid);
   if (!appElement) {
     NSLog(@"❌ Failed to get main app AXUIElement");
@@ -210,6 +207,7 @@ void startTabObserver(int pid, const char *browserName) {
     return;
   }
   data->context->name = strdup(browserName);
+  data->context->script = strdup(script);
   
   if (AXObserverCreate(pid, tabChangeCallback, &data->observer) != kAXErrorSuccess) {
     NSLog(@"❌ Failed to create AXObserver");

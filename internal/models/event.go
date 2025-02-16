@@ -7,6 +7,8 @@ import (
 	"github.com/mihn1/timekeeper/internal/datatypes"
 )
 
+
+
 type AppSwitchEvent struct {
 	AppName        string
 	StartTime      time.Time

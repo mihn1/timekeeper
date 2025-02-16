@@ -13,5 +13,5 @@ const (
 	// AppNameChrome is the name of the Chrome application
 	GOOGLE_CHROME = "Google Chrome"
 	BRAVE         = "Brave Browser"
-	SAFARI        = "Safari Browser"
+	SAFARI        = "Safari"
 )

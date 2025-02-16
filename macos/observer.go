@@ -8,7 +8,7 @@ import (
 	"github.com/mihn1/timekeeper/internal/constants"
 	"github.com/mihn1/timekeeper/internal/core"
 	"github.com/mihn1/timekeeper/internal/models"
-	"github.com/mihn1/timekeeper/macos/chromium"
+	"github.com/mihn1/timekeeper/macos/browsers"
 	"github.com/progrium/darwinkit/macos"
 	"github.com/progrium/darwinkit/macos/appkit"
 	"github.com/progrium/darwinkit/macos/foundation"
@@ -45,10 +45,9 @@ func (o *Observer) StartObserving() error {
 			func(notification foundation.Notification) {
 				event, pid := getEvent(notification)
 
-				if event.AppName == constants.GOOGLE_CHROME {
-					o.registerChromiumObserver(pid, constants.GOOGLE_CHROME)
-				} else if event.AppName == constants.BRAVE {
-					o.registerChromiumObserver(pid, constants.BRAVE)
+				switch event.AppName {
+				case constants.BRAVE, constants.GOOGLE_CHROME, constants.SAFARI:
+					o.registerBrowserObserver(pid, event.AppName)
 				}
 
 				o.timekeeper.PushEvent(event)
@@ -74,11 +73,12 @@ func getEvent(notification foundation.Notification) (models.AppSwitchEvent, int)
 	return event, int(runningApp.ProcessIdentifier())
 }
 
-func (o *Observer) registerChromiumObserver(pid int, browserName string) {
+func (o *Observer) registerBrowserObserver(pid int, browserName string) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
+
 	if !o.browserListeners[browserName] {
-		chromium.StartTabObserver(pid, browserName, o.timekeeper)
+		browsers.StartTabObserver(pid, browserName, o.timekeeper)
 		o.browserListeners[browserName] = true
 	}
 }
