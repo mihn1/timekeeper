@@ -4,13 +4,17 @@ package chromium
 #include <stdio.h>
 #include <stdlib.h>
 
-void startTabObserver(int pid, char * name);
+void startTabObserver(int ßpid, char * name);
+void cleanupAllObservers(void);
 */
 import "C"
 import (
 	"log"
+	"os"
+	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 	"unsafe"
 
@@ -60,4 +64,23 @@ func StartTabObserver(pid int, browser string, t *core.TimeKeeper) {
 	defer C.free(unsafe.Pointer(cBrowser))
 
 	C.startTabObserver(C.int(pid), cBrowser)
+}
+
+func init() {
+	// Set up signal handling
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		cleanup()
+		os.Exit(0)
+	}()
+}
+
+func cleanup() {
+	mu.Lock()
+	defer mu.Unlock()
+
+	// Call Objective-C cleanup
+	C.cleanupAllObservers()
 }
