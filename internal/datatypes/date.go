@@ -22,3 +22,7 @@ func NewDate(t time.Time) Date {
 func (d Date) String() string {
 	return fmt.Sprintf("%04d-%02d-%02d", d.Year, d.Month, d.Day)
 }
+
+func (d Date) DateTime() time.Time {
+	return time.Date(d.Year, time.Month(d.Month), d.Day, 0, 0, 0, 0, time.UTC)
+}

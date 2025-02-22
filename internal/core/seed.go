@@ -7,10 +7,10 @@ import (
 
 func SeedDataInMem(t *TimeKeeper) {
 
-	t.storage.CategoryStore.AddCategory(models.Category{Id: models.WORK, Name: "Work"})
-	t.storage.CategoryStore.AddCategory(models.Category{Id: models.ENTERTAINMENT, Name: "Entertainment"})
-	t.storage.CategoryStore.AddCategory(models.Category{Id: models.PERSONAL, Name: "Personal"})
-	t.storage.CategoryStore.AddCategory(models.Category{Id: models.UNDEFINED, Name: "Undefined"})
+	t.storage.Categories().AddCategory(models.Category{Id: models.WORK, Name: "Work"})
+	t.storage.Categories().AddCategory(models.Category{Id: models.ENTERTAINMENT, Name: "Entertainment"})
+	t.storage.Categories().AddCategory(models.Category{Id: models.PERSONAL, Name: "Personal"})
+	t.storage.Categories().AddCategory(models.Category{Id: models.UNDEFINED, Name: "Undefined"})
 
 	rules := make([]models.CategoryRule, 0)
 	rules = append(rules, models.CategoryRule{CategoryId: models.PERSONAL, AppName: constants.GOOGLE_CHROME})
@@ -60,6 +60,6 @@ func SeedDataInMem(t *TimeKeeper) {
 
 	for idx, rule := range rules {
 		rule.RuleId = idx + 1
-		t.storage.RuleStore.AddRule(rule)
+		t.storage.Rules().AddRule(rule)
 	}
 }

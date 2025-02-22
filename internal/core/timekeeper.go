@@ -1,11 +1,13 @@
 package core
 
 import (
+	"database/sql"
 	"log"
 
 	"github.com/mihn1/timekeeper/internal/core/resolvers"
 	"github.com/mihn1/timekeeper/internal/data"
 	"github.com/mihn1/timekeeper/internal/data/inmem"
+	"github.com/mihn1/timekeeper/internal/data/sqlite"
 	"github.com/mihn1/timekeeper/internal/datatypes"
 	"github.com/mihn1/timekeeper/internal/models"
 )
@@ -20,19 +22,27 @@ var (
 
 type TimeKeeper struct {
 	curAppEvent  *models.AppSwitchEvent
-	storage      *data.Storage
+	storage      data.Storage
 	isEnabled    bool
 	eventChannel chan models.AppSwitchEvent
 }
 
 func NewTimeKeeperInMem() *TimeKeeper {
 	t := &TimeKeeper{
-		storage: data.NewStorage(
-			inmem.NewCategoryStore(),
-			inmem.NewRuleStore(),
-			inmem.NewAppAggregationStore(),
-			inmem.NewCategoryAggregationStore(),
-		),
+		storage:      inmem.NewInmemStorage(),
+		eventChannel: make(chan models.AppSwitchEvent),
+	}
+	return t
+}
+
+func NewTimeKeeperSqlite() *TimeKeeper {
+	db, err := sql.Open("sqlite3", "./timekeeper.db")
+	if err != nil {
+		log.Fatalf("Error opening database: %v\n", err)
+	}
+
+	t := &TimeKeeper{
+		storage:      sqlite.NewSqliteStorage(db),
 		eventChannel: make(chan models.AppSwitchEvent),
 	}
 	return t
@@ -53,7 +63,7 @@ func (t *TimeKeeper) StartTracking() {
 		// TODO: stop the event listener
 	}
 
-	defaultResolver = resolvers.NewDefaultCategoryResolver(t.storage.RuleStore, t.storage.CategoryStore)
+	defaultResolver = resolvers.NewDefaultCategoryResolver(t.storage.Rules(), t.storage.Categories())
 
 	// Start listening for events
 	go func() {
@@ -65,8 +75,8 @@ func (t *TimeKeeper) StartTracking() {
 
 func (t *TimeKeeper) Report(date datatypes.Date) {
 	log.Printf("-------------TimeKeeper Report for %s-------------\n", date)
-	appAggrs, _ := t.storage.AppAggregationStore.GetAppAggregationsByDate(date)
-	catAggrs, _ := t.storage.CategoryAggregationStore.GetCategoryAggregationsByDate(date)
+	appAggrs, _ := t.storage.AppAggregations().GetAppAggregationsByDate(date)
+	catAggrs, _ := t.storage.CategoryAggregations().GetCategoryAggregationsByDate(date)
 	log.Printf("App Aggregation: %v\n", appAggrs)
 	log.Printf("Category Aggregation: %v\n", catAggrs)
 	log.Println("-------------------------------------------------------------------------------------------------")
@@ -108,7 +118,7 @@ func (t *TimeKeeper) handleEvent(event *models.AppSwitchEvent) {
 func (t *TimeKeeper) aggregateEvent(event *models.AppSwitchEvent) {
 	elapsedTime := event.StartTime.Sub(t.curAppEvent.StartTime).Milliseconds()
 
-	_, err := t.storage.AppAggregationStore.AggregateAppEvent(t.curAppEvent, elapsedTime)
+	_, err := t.storage.AppAggregations().AggregateAppEvent(t.curAppEvent, elapsedTime)
 	if err != nil {
 		log.Printf("Error aggregating app event: %v\n", err)
 	}
@@ -122,14 +132,14 @@ func (t *TimeKeeper) aggregateCategory(event *models.AppSwitchEvent, elapsedTime
 		log.Printf("Error resolving category: %v\n", err)
 	}
 
-	cat, err := t.storage.CategoryStore.GetCategory(catId)
+	cat, err := t.storage.Categories().GetCategory(catId)
 	if err != nil {
 		log.Printf("Error getting category: %v\n", err)
 		return
 	}
 
 	log.Printf("%v resolved for %v - %v", cat.Name, event.AppName, event.AdditionalData)
-	_, err = t.storage.CategoryAggregationStore.AggregateCategory(cat, event.GetEventDate(), elapsedTime)
+	_, err = t.storage.CategoryAggregations().AggregateCategory(cat, event.GetEventDate(), elapsedTime)
 	if err != nil {
 		log.Printf("Error aggregating category: %v\n", err)
 	}

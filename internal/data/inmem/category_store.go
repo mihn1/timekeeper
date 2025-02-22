@@ -9,13 +9,13 @@ import (
 
 type CategoryStore struct {
 	data map[models.CategoryId]models.Category
-	mu   sync.RWMutex
+	mu   sync.Mutex
 }
 
 func NewCategoryStore() *CategoryStore {
 	return &CategoryStore{
 		data: make(map[models.CategoryId]models.Category),
-		mu:   sync.RWMutex{},
+		mu:   sync.Mutex{},
 	}
 }
 
@@ -28,8 +28,8 @@ func (c *CategoryStore) AddCategory(category models.Category) error {
 }
 
 func (c *CategoryStore) GetCategory(id models.CategoryId) (models.Category, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	category, ok := c.data[id]
 	if !ok {
@@ -39,16 +39,16 @@ func (c *CategoryStore) GetCategory(id models.CategoryId) (models.Category, erro
 	return category, nil
 }
 
-func (c *CategoryStore) GetCategories() []models.Category {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+func (c *CategoryStore) GetCategories() ([]models.Category, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	categories := make([]models.Category, 0, len(c.data))
 	for _, category := range c.data {
 		categories = append(categories, category)
 	}
 
-	return categories
+	return categories, nil
 }
 
 func (c *CategoryStore) DeleteCategory(id models.CategoryId) error {
