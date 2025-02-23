@@ -2,11 +2,13 @@ package sqlite
 
 import (
 	"database/sql"
+	"sync"
 
 	"github.com/mihn1/timekeeper/internal/data"
 )
 
 type SqliteStorage struct {
+	db                       *sql.DB
 	categoryStore            data.CategoryStore
 	ruleStore                data.RuleStore
 	appAggregationStore      data.AppAggregationStore
@@ -14,11 +16,13 @@ type SqliteStorage struct {
 }
 
 func NewSqliteStorage(db *sql.DB) *SqliteStorage {
+	mu := &sync.RWMutex{}
 	return &SqliteStorage{
-		categoryStore:            NewCategoryStore(db, "categories"),
-		ruleStore:                NewRuleStore(db, "rules"),
-		appAggregationStore:      NewAppAggregationStore(db, "app_aggregations"),
-		categoryAggregationStore: NewCategoryAggregationStore(db, "category_aggregations"),
+		db:                       db,
+		categoryStore:            NewCategoryStore(db, mu, "categories"),
+		ruleStore:                NewRuleStore(db, mu, "rules"),
+		appAggregationStore:      NewAppAggregationStore(db, mu, "app_aggregations"),
+		categoryAggregationStore: NewCategoryAggregationStore(db, mu, "category_aggregations"),
 	}
 }
 
@@ -36,4 +40,8 @@ func (s *SqliteStorage) AppAggregations() data.AppAggregationStore {
 
 func (s *SqliteStorage) CategoryAggregations() data.CategoryAggregationStore {
 	return s.categoryAggregationStore
+}
+
+func (s *SqliteStorage) Close() error {
+	return s.db.Close()
 }

@@ -6,8 +6,8 @@ import (
 )
 
 type CategoryAggregationStore interface {
-	AggregateCategory(cat models.Category, date datatypes.Date, elapsedTime int64) (*models.CategoryAggregation, error)
-	GetCategoryAggregation(categoryId models.CategoryId, date datatypes.Date) (*models.CategoryAggregation, bool)
+	AggregateCategory(cat models.Category, date datatypes.DateOnly, elapsedTime int64) (*models.CategoryAggregation, error)
+	GetCategoryAggregation(categoryId models.CategoryId, date datatypes.DateOnly) (*models.CategoryAggregation, bool)
 	GetCategoryAggregations() ([]*models.CategoryAggregation, error)
-	GetCategoryAggregationsByDate(date datatypes.Date) ([]*models.CategoryAggregation, error)
+	GetCategoryAggregationsByDate(date datatypes.DateOnly) ([]*models.CategoryAggregation, error)
 }

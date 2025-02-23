@@ -10,13 +10,14 @@ import (
 
 type CategoryAggregations struct {
 	db        *sql.DB
+	mu        *sync.RWMutex
 	tableName string
-	mu        sync.Mutex
 }
 
-func NewCategoryAggregationStore(db *sql.DB, tableName string) *CategoryAggregations {
+func NewCategoryAggregationStore(db *sql.DB, mu *sync.RWMutex, tableName string) *CategoryAggregations {
 	s := &CategoryAggregations{
 		db:        db,
+		mu:        mu,
 		tableName: tableName,
 	}
 
@@ -35,7 +36,7 @@ func NewCategoryAggregationStore(db *sql.DB, tableName string) *CategoryAggregat
 	return s
 }
 
-func (s *CategoryAggregations) AggregateCategory(cat models.Category, date datatypes.Date, elapsedTime int64) (*models.CategoryAggregation, error) {
+func (s *CategoryAggregations) AggregateCategory(cat models.Category, date datatypes.DateOnly, elapsedTime int64) (*models.CategoryAggregation, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -49,7 +50,7 @@ func (s *CategoryAggregations) AggregateCategory(cat models.Category, date datat
 				CategoryId: cat.Id,
 				Date:       date,
 			}
-			_, err = s.db.Exec("INSERT INTO "+s.tableName+" (key, category_id, date, time_elapsed) VALUES (?, ?, ?, ?)", key, aggr.CategoryId, aggr.Date.DateTime(), aggr.TimeElapsed)
+			_, err = s.db.Exec("INSERT INTO "+s.tableName+" (key, category_id, date, time_elapsed) VALUES (?, ?, ?, ?)", key, aggr.CategoryId, aggr.Date, aggr.TimeElapsed)
 			if err != nil {
 				return nil, err
 			}
@@ -67,9 +68,9 @@ func (s *CategoryAggregations) AggregateCategory(cat models.Category, date datat
 	return aggr, nil
 }
 
-func (s *CategoryAggregations) GetCategoryAggregation(categoryId models.CategoryId, date datatypes.Date) (*models.CategoryAggregation, bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (s *CategoryAggregations) GetCategoryAggregation(categoryId models.CategoryId, date datatypes.DateOnly) (*models.CategoryAggregation, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	key := models.GetCategoryAggregationKey(categoryId, date)
 	row := s.db.QueryRow("SELECT category_id, date, time_elapsed FROM "+s.tableName+" WHERE key = ?", key)
@@ -82,8 +83,8 @@ func (s *CategoryAggregations) GetCategoryAggregation(categoryId models.Category
 }
 
 func (s *CategoryAggregations) GetCategoryAggregations() ([]*models.CategoryAggregation, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	rows, err := s.db.Query("SELECT category_id, date, time_elapsed FROM " + s.tableName)
 	if err != nil {
@@ -103,11 +104,11 @@ func (s *CategoryAggregations) GetCategoryAggregations() ([]*models.CategoryAggr
 	return aggregations, nil
 }
 
-func (s *CategoryAggregations) GetCategoryAggregationsByDate(date datatypes.Date) ([]*models.CategoryAggregation, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (s *CategoryAggregations) GetCategoryAggregationsByDate(date datatypes.DateOnly) ([]*models.CategoryAggregation, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	rows, err := s.db.Query("SELECT category_id, date, time_elapsed FROM "+s.tableName+" WHERE date = ?", date.DateTime())
+	rows, err := s.db.Query("SELECT category_id, date, time_elapsed FROM "+s.tableName+" WHERE date = ?", date)
 	if err != nil {
 		return nil, err
 	}

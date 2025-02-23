@@ -1,6 +1,8 @@
 package inmem
 
 import (
+	"log"
+
 	"github.com/mihn1/timekeeper/internal/datatypes"
 	"github.com/mihn1/timekeeper/internal/models"
 	"github.com/mihn1/timekeeper/utils"
@@ -17,6 +19,7 @@ func NewAppAggregationStore() *AppAggregationStore {
 }
 
 func (store *AppAggregationStore) AggregateAppEvent(event *models.AppSwitchEvent, elapsedTime int64) (*models.AppAggregation, error) {
+	log.Println("Aggregating app event inmem", event)
 	key := models.GetAppAggregationKey(event)
 	aggr, ok := store.Aggregations[key]
 
@@ -36,7 +39,7 @@ func (store *AppAggregationStore) GetAppAggregations() ([]*models.AppAggregation
 	return utils.GetMapValues(store.Aggregations), nil
 }
 
-func (store *AppAggregationStore) GetAppAggregationsByDate(date datatypes.Date) ([]*models.AppAggregation, error) {
+func (store *AppAggregationStore) GetAppAggregationsByDate(date datatypes.DateOnly) ([]*models.AppAggregation, error) {
 	var aggregations []*models.AppAggregation
 	for _, aggregation := range store.Aggregations {
 		if aggregation.Date == date {

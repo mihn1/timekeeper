@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/mihn1/timekeeper/internal/core/resolvers"
 	"github.com/mihn1/timekeeper/internal/data"
 	"github.com/mihn1/timekeeper/internal/data/inmem"
@@ -35,10 +36,16 @@ func NewTimeKeeperInMem() *TimeKeeper {
 	return t
 }
 
-func NewTimeKeeperSqlite() *TimeKeeper {
-	db, err := sql.Open("sqlite3", "./timekeeper.db")
+func NewTimeKeeperSqlite(path string) *TimeKeeper {
+	db, err := sql.Open("sqlite3", path)
 	if err != nil {
 		log.Fatalf("Error opening database: %v\n", err)
+	}
+
+	db.SetMaxOpenConns(1)
+	_, err = db.Exec("PRAGMA busy_timeout = 5000;")
+	if err != nil {
+		log.Fatalf("Error setting busy_timeout: %v\n", err)
 	}
 
 	t := &TimeKeeper{
@@ -46,6 +53,12 @@ func NewTimeKeeperSqlite() *TimeKeeper {
 		eventChannel: make(chan models.AppSwitchEvent),
 	}
 	return t
+}
+
+func (t *TimeKeeper) Close() {
+	log.Println("Closing TimeKeeper...")
+	t.Disable()
+	t.storage.Close()
 }
 
 func (t *TimeKeeper) Disable() {
@@ -73,7 +86,7 @@ func (t *TimeKeeper) StartTracking() {
 	}()
 }
 
-func (t *TimeKeeper) Report(date datatypes.Date) {
+func (t *TimeKeeper) Report(date datatypes.DateOnly) {
 	log.Printf("-------------TimeKeeper Report for %s-------------\n", date)
 	appAggrs, _ := t.storage.AppAggregations().GetAppAggregationsByDate(date)
 	catAggrs, _ := t.storage.CategoryAggregations().GetCategoryAggregationsByDate(date)
@@ -112,7 +125,7 @@ func (t *TimeKeeper) handleEvent(event *models.AppSwitchEvent) {
 	t.curAppEvent.EndTime = event.StartTime
 	t.curAppEvent = event
 
-	t.Report(datatypes.NewDate(event.StartTime))
+	t.Report(datatypes.NewDateOnly(event.StartTime))
 }
 
 func (t *TimeKeeper) aggregateEvent(event *models.AppSwitchEvent) {
@@ -120,7 +133,8 @@ func (t *TimeKeeper) aggregateEvent(event *models.AppSwitchEvent) {
 
 	_, err := t.storage.AppAggregations().AggregateAppEvent(t.curAppEvent, elapsedTime)
 	if err != nil {
-		log.Printf("Error aggregating app event: %v\n", err)
+		log.Printf("Error aggregating app event for %s: %v\n", event.AppName, err)
+		return
 	}
 
 	t.aggregateCategory(t.curAppEvent, elapsedTime) // Call after aggregateEvent

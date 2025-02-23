@@ -10,13 +10,14 @@ import (
 
 type AppAggregationStore struct {
 	db        *sql.DB
+	mu        *sync.RWMutex
 	tableName string
-	mu        sync.Mutex // Add a mutex to protect critical sections
 }
 
-func NewAppAggregationStore(db *sql.DB, tableName string) *AppAggregationStore {
+func NewAppAggregationStore(db *sql.DB, mu *sync.RWMutex, tableName string) *AppAggregationStore {
 	store := &AppAggregationStore{
 		db:        db,
+		mu:        mu,
 		tableName: tableName,
 	}
 
@@ -37,12 +38,13 @@ func NewAppAggregationStore(db *sql.DB, tableName string) *AppAggregationStore {
 }
 
 func (s *AppAggregationStore) AggregateAppEvent(event *models.AppSwitchEvent, elapsedTime int64) (*models.AppAggregation, error) {
-	s.mu.Lock()         // Lock the mutex
-	defer s.mu.Unlock() // Unlock the mutex when the function returns
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	key := models.GetAppAggregationKey(event)
 	var appAggr *models.AppAggregation = &models.AppAggregation{}
 	row := s.db.QueryRow("SELECT app_name, date, time_elapsed, additional_data FROM "+s.tableName+" WHERE key = ?", key)
+
 	err := row.Scan(&appAggr.AppName, &appAggr.Date, &appAggr.TimeElapsed, &appAggr.AdditionalData)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -50,7 +52,7 @@ func (s *AppAggregationStore) AggregateAppEvent(event *models.AppSwitchEvent, el
 				AppName: event.AppName,
 				Date:    event.GetEventDate(),
 			}
-			_, err = s.db.Exec("INSERT INTO "+s.tableName+" (key, app_name, date, time_elapsed) VALUES (?, ?, ?, ?)", key, appAggr.AppName, appAggr.Date.DateTime(), appAggr.TimeElapsed)
+			_, err = s.db.Exec("INSERT INTO "+s.tableName+" (key, app_name, date, time_elapsed) VALUES (?, ?, ?, ?)", key, appAggr.AppName, appAggr.Date, appAggr.TimeElapsed)
 			if err != nil {
 				return nil, err
 			}
@@ -68,11 +70,11 @@ func (s *AppAggregationStore) AggregateAppEvent(event *models.AppSwitchEvent, el
 	return appAggr, nil
 }
 
-func (store *AppAggregationStore) GetAppAggregations() ([]*models.AppAggregation, error) {
-	store.mu.Lock()         // Lock the mutex
-	defer store.mu.Unlock() // Unlock the mutex when the function returns
+func (s *AppAggregationStore) GetAppAggregations() ([]*models.AppAggregation, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	rows, err := store.db.Query("SELECT app_name, date, time_elapsed, additional_data FROM " + store.tableName)
+	rows, err := s.db.Query("SELECT app_name, date, time_elapsed, additional_data FROM " + s.tableName)
 	if err != nil {
 		return nil, err
 	}
@@ -92,11 +94,11 @@ func (store *AppAggregationStore) GetAppAggregations() ([]*models.AppAggregation
 
 }
 
-func (store *AppAggregationStore) GetAppAggregationsByDate(date datatypes.Date) ([]*models.AppAggregation, error) {
-	store.mu.Lock()         // Lock the mutex
-	defer store.mu.Unlock() // Unlock the mutex when the function returns
+func (s *AppAggregationStore) GetAppAggregationsByDate(date datatypes.DateOnly) ([]*models.AppAggregation, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	rows, err := store.db.Query("SELECT app_name, date, time_elapsed, additional_data FROM "+store.tableName+" WHERE date = ?", date.DateTime())
+	rows, err := s.db.Query("SELECT app_name, date, time_elapsed, additional_data FROM "+s.tableName+" WHERE date = ?", date)
 	if err != nil {
 		return nil, err
 	}

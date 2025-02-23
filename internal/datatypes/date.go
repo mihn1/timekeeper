@@ -1,28 +1,57 @@
 package datatypes
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"time"
 )
 
-type Date struct {
-	Year  int
-	Month int
-	Day   int
+// DateOnly represents a date without a time component
+type DateOnly struct {
+	time.Time
 }
 
-func NewDate(t time.Time) Date {
-	return Date{
-		Year:  t.Year(),
-		Month: int(t.Month()),
-		Day:   t.Day(),
+// NewDateOnly creates a DateOnly from a time.Time
+func NewDateOnly(t time.Time) DateOnly {
+	// Normalize the time to remove time part
+	normalized := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
+	return DateOnly{Time: normalized}
+}
+
+// Scan implements the sql.Scanner interface
+func (d *DateOnly) Scan(value interface{}) error {
+	if value == nil {
+		*d = DateOnly{}
+		return nil
 	}
+
+	switch v := value.(type) {
+	case time.Time:
+		*d = NewDateOnly(v)
+	case string:
+		parsedTime, err := time.Parse("2006-01-02", v)
+		if err != nil {
+			return err
+		}
+		*d = NewDateOnly(parsedTime)
+	case []byte:
+		parsedTime, err := time.Parse("2006-01-02", string(v))
+		if err != nil {
+			return err
+		}
+		*d = NewDateOnly(parsedTime)
+	default:
+		return fmt.Errorf("cannot scan type %T into DateOnly", value)
+	}
+	return nil
 }
 
-func (d Date) String() string {
-	return fmt.Sprintf("%04d-%02d-%02d", d.Year, d.Month, d.Day)
+// Value implements the driver.Valuer interface
+func (d DateOnly) Value() (driver.Value, error) {
+	return d.Time, nil
 }
 
-func (d Date) DateTime() time.Time {
-	return time.Date(d.Year, time.Month(d.Month), d.Day, 0, 0, 0, 0, time.UTC)
+// String returns the date in YYYY-MM-DD format
+func (d DateOnly) String() string {
+	return d.Format("2006-01-02")
 }

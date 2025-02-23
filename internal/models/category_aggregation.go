@@ -9,11 +9,11 @@ import (
 
 type CategoryAggregation struct {
 	CategoryId  CategoryId
-	Date        datatypes.Date
+	Date        datatypes.DateOnly
 	TimeElapsed int64 // in miliseconds
 }
 
-func GetCategoryAggregationKey(categoryId CategoryId, date datatypes.Date) string {
+func GetCategoryAggregationKey(categoryId CategoryId, date datatypes.DateOnly) string {
 	return string(categoryId) + "-" + date.String()
 }
 

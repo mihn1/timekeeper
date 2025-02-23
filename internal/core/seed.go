@@ -1,12 +1,14 @@
 package core
 
 import (
+	"log"
+
 	"github.com/mihn1/timekeeper/internal/constants"
 	"github.com/mihn1/timekeeper/internal/models"
 )
 
-func SeedDataInMem(t *TimeKeeper) {
-
+func SeedData(t *TimeKeeper) {
+	log.Println("Start seeding data...")
 	t.storage.Categories().AddCategory(models.Category{Id: models.WORK, Name: "Work"})
 	t.storage.Categories().AddCategory(models.Category{Id: models.ENTERTAINMENT, Name: "Entertainment"})
 	t.storage.Categories().AddCategory(models.Category{Id: models.PERSONAL, Name: "Personal"})
@@ -62,4 +64,6 @@ func SeedDataInMem(t *TimeKeeper) {
 		rule.RuleId = idx + 1
 		t.storage.Rules().AddRule(rule)
 	}
+
+	log.Println("Data seeding completed.")
 }

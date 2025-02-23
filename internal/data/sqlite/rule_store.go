@@ -10,13 +10,14 @@ import (
 
 type RuleStore struct {
 	db        *sql.DB
+	mu        *sync.RWMutex
 	tableName string
-	mu        sync.Mutex // Add a mutex to protect critical sections
 }
 
-func NewRuleStore(db *sql.DB, tableName string) *RuleStore {
+func NewRuleStore(db *sql.DB, mu *sync.RWMutex, tableName string) *RuleStore {
 	store := &RuleStore{
 		db:        db,
+		mu:        mu,
 		tableName: tableName,
 	}
 
@@ -38,11 +39,11 @@ func NewRuleStore(db *sql.DB, tableName string) *RuleStore {
 	return store
 }
 
-func (r *RuleStore) GetRules() ([]models.CategoryRule, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+func (s *RuleStore) GetRules() ([]models.CategoryRule, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	rows, err := r.db.Query("SELECT rule_id, category_id, app_name, additional_data_key, expression, is_regex, priority FROM " + r.tableName)
+	rows, err := s.db.Query("SELECT rule_id, category_id, app_name, additional_data_key, expression, is_regex, priority FROM " + s.tableName)
 	if err != nil {
 		return nil, err
 	}
@@ -61,11 +62,11 @@ func (r *RuleStore) GetRules() ([]models.CategoryRule, error) {
 	return rules, nil
 }
 
-func (r *RuleStore) GetRule(ruleId int) (models.CategoryRule, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+func (s *RuleStore) GetRule(ruleId int) (models.CategoryRule, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	row := r.db.QueryRow("SELECT rule_id, category_id, app_name, additional_data_key, expression, is_regex, priority FROM "+r.tableName+" WHERE rule_id = ?", ruleId)
+	row := s.db.QueryRow("SELECT rule_id, category_id, app_name, additional_data_key, expression, is_regex, priority FROM "+s.tableName+" WHERE rule_id = ?", ruleId)
 	var rule models.CategoryRule
 	err := row.Scan(&rule.RuleId, &rule.CategoryId, &rule.AppName, &rule.AdditionalDataKey, &rule.Expression, &rule.IsRegex, &rule.Priority)
 	if err != nil {
@@ -78,11 +79,11 @@ func (r *RuleStore) GetRule(ruleId int) (models.CategoryRule, error) {
 	return rule, nil
 }
 
-func (r *RuleStore) GetRulesByCategory(categoryId models.CategoryId) ([]models.CategoryRule, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+func (s *RuleStore) GetRulesByCategory(categoryId models.CategoryId) ([]models.CategoryRule, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	rows, err := r.db.Query("SELECT rule_id, category_id, app_name, additional_data_key, expression, is_regex, priority FROM "+r.tableName+" WHERE category_id = ?", categoryId)
+	rows, err := s.db.Query("SELECT rule_id, category_id, app_name, additional_data_key, expression, is_regex, priority FROM "+s.tableName+" WHERE category_id = ?", categoryId)
 	if err != nil {
 		return nil, err
 	}
@@ -101,11 +102,11 @@ func (r *RuleStore) GetRulesByCategory(categoryId models.CategoryId) ([]models.C
 	return rules, nil
 }
 
-func (r *RuleStore) GetRulesByApp(appName string) ([]models.CategoryRule, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+func (s *RuleStore) GetRulesByApp(appName string) ([]models.CategoryRule, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	rows, err := r.db.Query("SELECT rule_id, category_id, app_name, additional_data_key, expression, is_regex, priority FROM "+r.tableName+" WHERE app_name = ?", appName)
+	rows, err := s.db.Query("SELECT rule_id, category_id, app_name, additional_data_key, expression, is_regex, priority FROM "+s.tableName+" WHERE app_name = ?", appName)
 	if err != nil {
 		return nil, err
 	}
@@ -124,19 +125,19 @@ func (r *RuleStore) GetRulesByApp(appName string) ([]models.CategoryRule, error)
 	return rules, nil
 }
 
-func (r *RuleStore) AddRule(rule models.CategoryRule) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+func (s *RuleStore) AddRule(rule models.CategoryRule) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	_, err := r.db.Exec("INSERT INTO "+r.tableName+" (rule_id, category_id, app_name, additional_data_key, expression, is_regex, priority) VALUES (?, ?, ?, ?, ?, ?, ?)",
+	_, err := s.db.Exec("INSERT INTO "+s.tableName+" (rule_id, category_id, app_name, additional_data_key, expression, is_regex, priority) VALUES (?, ?, ?, ?, ?, ?, ?)",
 		rule.RuleId, rule.CategoryId, rule.AppName, rule.AdditionalDataKey, rule.Expression, rule.IsRegex, rule.Priority)
 	return err
 }
 
-func (r *RuleStore) DeleteRule(ruleId int) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+func (s *RuleStore) DeleteRule(ruleId int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	_, err := r.db.Exec("DELETE FROM "+r.tableName+" WHERE rule_id = ?", ruleId)
+	_, err := s.db.Exec("DELETE FROM "+s.tableName+" WHERE rule_id = ?", ruleId)
 	return err
 }

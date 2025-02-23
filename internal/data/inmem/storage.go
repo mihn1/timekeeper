@@ -1,6 +1,8 @@
 package inmem
 
-import "github.com/mihn1/timekeeper/internal/data"
+import (
+	"github.com/mihn1/timekeeper/internal/data"
+)
 
 type InmemStorage struct {
 	categoryStore            data.CategoryStore
@@ -32,4 +34,8 @@ func (s *InmemStorage) AppAggregations() data.AppAggregationStore {
 
 func (s *InmemStorage) CategoryAggregations() data.CategoryAggregationStore {
 	return s.categoryAggregationStore
+}
+
+func (s *InmemStorage) Close() error {
+	return nil
 }

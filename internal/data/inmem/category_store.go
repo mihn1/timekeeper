@@ -28,9 +28,6 @@ func (c *CategoryStore) AddCategory(category models.Category) error {
 }
 
 func (c *CategoryStore) GetCategory(id models.CategoryId) (models.Category, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	category, ok := c.data[id]
 	if !ok {
 		return models.Category{}, fmt.Errorf("category with id %s not found", id)
@@ -40,9 +37,6 @@ func (c *CategoryStore) GetCategory(id models.CategoryId) (models.Category, erro
 }
 
 func (c *CategoryStore) GetCategories() ([]models.Category, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	categories := make([]models.Category, 0, len(c.data))
 	for _, category := range c.data {
 		categories = append(categories, category)

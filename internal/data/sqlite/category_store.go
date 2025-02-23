@@ -10,13 +10,14 @@ import (
 
 type CategoryStore struct {
 	db        *sql.DB
+	mu        *sync.RWMutex
 	tableName string
-	mu        sync.Mutex // Add a mutex to protect critical sections
 }
 
-func NewCategoryStore(db *sql.DB, tableName string) *CategoryStore {
+func NewCategoryStore(db *sql.DB, mu *sync.RWMutex, tableName string) *CategoryStore {
 	store := &CategoryStore{
 		db:        db,
+		mu:        mu,
 		tableName: tableName,
 	}
 
@@ -44,8 +45,8 @@ func (s *CategoryStore) AddCategory(category models.Category) error {
 }
 
 func (s *CategoryStore) GetCategory(id models.CategoryId) (models.Category, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	row := s.db.QueryRow("SELECT id, name, description FROM "+s.tableName+" WHERE id = ?", id)
 	var category models.Category
@@ -61,8 +62,8 @@ func (s *CategoryStore) GetCategory(id models.CategoryId) (models.Category, erro
 }
 
 func (s *CategoryStore) GetCategories() ([]models.Category, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	rows, err := s.db.Query("SELECT id, name, description FROM " + s.tableName)
 	if err != nil {

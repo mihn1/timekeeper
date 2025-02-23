@@ -10,7 +10,7 @@ import (
 type AppAggregation struct {
 	AppName        string
 	AdditionalData interface{} // E.g. title of a browser tab or url // TODO: redesign this to support multiple fields
-	Date           datatypes.Date
+	Date           datatypes.DateOnly
 	TimeElapsed    int64 // in milliseconds
 }
 
