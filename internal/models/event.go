@@ -7,10 +7,14 @@ import (
 	"github.com/mihn1/timekeeper/internal/datatypes"
 )
 
+type EventId int
+
 type AppSwitchEvent struct {
+	Id             EventId
 	AppName        string
 	StartTime      time.Time
 	EndTime        time.Time
+	CategoryId     CategoryId
 	AdditionalData map[string]string
 }
 

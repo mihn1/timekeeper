@@ -19,6 +19,9 @@ func main() {
 	flag.Parse()
 
 	var timekeeper *core.TimeKeeper
+	opts := core.TimeKeeperOptions{
+		StoreEvents: false,
+	}
 
 	switch *dbType {
 	case "sqlite":
@@ -26,11 +29,14 @@ func main() {
 			defaultDbPath := "./timekeeper.db"
 			dbPath = &defaultDbPath // Default db path
 		}
+
 		log.Println("Starting sqlite Timekeeper with database path:", *dbPath)
-		timekeeper = core.NewTimeKeeperSqlite(*dbPath)
+		opts.StoragePath = *dbPath
+		opts.StoreEvents = true // Only store events in SQLite
+		timekeeper = core.NewTimeKeeperSqlite(opts)
 	case "inmem":
 		log.Println("Starting inmem Timekeeper")
-		timekeeper = core.NewTimeKeeperInMem()
+		timekeeper = core.NewTimeKeeperInMem(opts)
 	default:
 		panic(fmt.Sprintf("Invalid database type %s", *dbType))
 	}

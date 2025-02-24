@@ -21,28 +21,39 @@ var (
 	defaultResolver resolvers.CategoryResolver
 )
 
+type TimeKeeperOptions struct {
+	StoreEvents bool
+	StoragePath string
+}
+
 type TimeKeeper struct {
 	curAppEvent  *models.AppSwitchEvent
+	opts         TimeKeeperOptions
 	storage      data.Storage
 	isEnabled    bool
 	eventChannel chan models.AppSwitchEvent
 }
 
-func NewTimeKeeperInMem() *TimeKeeper {
+func NewTimeKeeperInMem(opts TimeKeeperOptions) *TimeKeeper {
 	t := &TimeKeeper{
 		storage:      inmem.NewInmemStorage(),
 		eventChannel: make(chan models.AppSwitchEvent),
+		opts:         opts,
 	}
 	return t
 }
 
-func NewTimeKeeperSqlite(path string) *TimeKeeper {
-	db, err := sql.Open("sqlite3", path)
+func NewTimeKeeperSqlite(opts TimeKeeperOptions) *TimeKeeper {
+	if opts.StoragePath == "" {
+		log.Println("No storage path provided. Using default path.")
+		opts.StoragePath = "./timekeeper.db"
+	}
+
+	db, err := sql.Open("sqlite3", opts.StoragePath)
 	if err != nil {
 		log.Fatalf("Error opening database: %v\n", err)
 	}
 
-	db.SetMaxOpenConns(1)
 	_, err = db.Exec("PRAGMA busy_timeout = 5000;")
 	if err != nil {
 		log.Fatalf("Error setting busy_timeout: %v\n", err)
@@ -51,6 +62,7 @@ func NewTimeKeeperSqlite(path string) *TimeKeeper {
 	t := &TimeKeeper{
 		storage:      sqlite.NewSqliteStorage(db),
 		eventChannel: make(chan models.AppSwitchEvent),
+		opts:         opts,
 	}
 	return t
 }
@@ -71,11 +83,6 @@ func (t *TimeKeeper) IsEnabled() bool {
 
 func (t *TimeKeeper) StartTracking() {
 	t.isEnabled = true
-
-	if !t.IsEnabled() {
-		// TODO: stop the event listener
-	}
-
 	defaultResolver = resolvers.NewDefaultCategoryResolver(t.storage.Rules(), t.storage.Categories())
 
 	// Start listening for events
@@ -119,16 +126,22 @@ func (t *TimeKeeper) handleEvent(event *models.AppSwitchEvent) {
 		return
 	}
 
-	t.aggregateEvent(event)
-
-	// TODO: store events
+	t.aggregateNewEvent(event)
 	t.curAppEvent.EndTime = event.StartTime
-	t.curAppEvent = event
 
+	// store the current app event
+	if t.opts.StoreEvents {
+		err := t.storage.Events().AddEvent(t.curAppEvent)
+		if err != nil {
+			log.Printf("Error storing event: %v\n", err)
+		}
+	}
+
+	t.curAppEvent = event
 	t.Report(datatypes.NewDateOnly(event.StartTime))
 }
 
-func (t *TimeKeeper) aggregateEvent(event *models.AppSwitchEvent) {
+func (t *TimeKeeper) aggregateNewEvent(event *models.AppSwitchEvent) {
 	elapsedTime := event.StartTime.Sub(t.curAppEvent.StartTime).Milliseconds()
 
 	_, err := t.storage.AppAggregations().AggregateAppEvent(t.curAppEvent, elapsedTime)
@@ -137,26 +150,35 @@ func (t *TimeKeeper) aggregateEvent(event *models.AppSwitchEvent) {
 		return
 	}
 
-	t.aggregateCategory(t.curAppEvent, elapsedTime) // Call after aggregateEvent
+	catId, err := t.aggregateCategory(t.curAppEvent, elapsedTime) // Call after aggregateEvent
+	if err != nil {
+		log.Printf("Error aggregating category for %s: %v\n", event.AppName, err)
+		return
+	}
+
+	t.curAppEvent.CategoryId = catId
 }
 
-func (t *TimeKeeper) aggregateCategory(event *models.AppSwitchEvent, elapsedTime int64) {
+func (t *TimeKeeper) aggregateCategory(event *models.AppSwitchEvent, elapsedTime int64) (models.CategoryId, error) {
 	catId, err := defaultResolver.ResolveCategory(event)
 	if err != nil {
-		log.Printf("Error resolving category: %v\n", err)
+		return catId, err
 	}
 
 	cat, err := t.storage.Categories().GetCategory(catId)
 	if err != nil {
 		log.Printf("Error getting category: %v\n", err)
-		return
+		return catId, err
 	}
 
 	log.Printf("%v resolved for %v - %v", cat.Name, event.AppName, event.AdditionalData)
 	_, err = t.storage.CategoryAggregations().AggregateCategory(cat, event.GetEventDate(), elapsedTime)
 	if err != nil {
-		log.Printf("Error aggregating category: %v\n", err)
+		log.Printf("Error saving category aggregation: %v\n", err)
+		return catId, err
 	}
+
+	return catId, nil
 }
 
 func isSameEvent(e1, e2 *models.AppSwitchEvent) bool {

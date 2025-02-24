@@ -5,5 +5,6 @@ type Storage interface {
 	Rules() RuleStore
 	AppAggregations() AppAggregationStore
 	CategoryAggregations() CategoryAggregationStore
+	Events() EventStore
 	Close() error
 }

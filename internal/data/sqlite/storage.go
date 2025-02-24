@@ -13,6 +13,7 @@ type SqliteStorage struct {
 	ruleStore                data.RuleStore
 	appAggregationStore      data.AppAggregationStore
 	categoryAggregationStore data.CategoryAggregationStore
+	eventStore               data.EventStore
 }
 
 func NewSqliteStorage(db *sql.DB) *SqliteStorage {
@@ -23,6 +24,7 @@ func NewSqliteStorage(db *sql.DB) *SqliteStorage {
 		ruleStore:                NewRuleStore(db, mu, "rules"),
 		appAggregationStore:      NewAppAggregationStore(db, mu, "app_aggregations"),
 		categoryAggregationStore: NewCategoryAggregationStore(db, mu, "category_aggregations"),
+		eventStore:               NewEventStore(db, mu, "events"),
 	}
 }
 
@@ -40,6 +42,10 @@ func (s *SqliteStorage) AppAggregations() data.AppAggregationStore {
 
 func (s *SqliteStorage) CategoryAggregations() data.CategoryAggregationStore {
 	return s.categoryAggregationStore
+}
+
+func (s *SqliteStorage) Events() data.EventStore {
+	return s.eventStore
 }
 
 func (s *SqliteStorage) Close() error {

@@ -9,6 +9,7 @@ type InmemStorage struct {
 	ruleStore                data.RuleStore
 	appAggregationStore      data.AppAggregationStore
 	categoryAggregationStore data.CategoryAggregationStore
+	eventStore               data.EventStore
 }
 
 func NewInmemStorage() *InmemStorage {
@@ -17,6 +18,7 @@ func NewInmemStorage() *InmemStorage {
 		ruleStore:                NewRuleStore(),
 		appAggregationStore:      NewAppAggregationStore(),
 		categoryAggregationStore: NewCategoryAggregationStore(),
+		eventStore:               NewEventStore(),
 	}
 }
 
@@ -34,6 +36,10 @@ func (s *InmemStorage) AppAggregations() data.AppAggregationStore {
 
 func (s *InmemStorage) CategoryAggregations() data.CategoryAggregationStore {
 	return s.categoryAggregationStore
+}
+
+func (s *InmemStorage) Events() data.EventStore {
+	return s.eventStore
 }
 
 func (s *InmemStorage) Close() error {
