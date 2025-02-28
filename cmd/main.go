@@ -16,7 +16,8 @@ func main() {
 	// Define flags
 	dbType := flag.String("db", "sqlite", "Database type: 'sqlite' or 'inmem'")
 	dbPath := flag.String("dbpath", "./db/timekeeper.db", "Path to SQLite database file")
-	seedData := flag.Bool("seed", false, "Seed initial data")
+	seed := flag.Bool("seed", true, "Seed initial data")
+	seedOnly := flag.Bool("seedonly", false, "Seed initial data")
 
 	flag.Parse()
 
@@ -38,13 +39,17 @@ func main() {
 		timekeeper = core.NewTimeKeeperSqlite(opts)
 	case "inmem":
 		log.Println("Starting inmem Timekeeper")
+		*seedOnly = true // Always seed data for inmem
 		timekeeper = core.NewTimeKeeperInMem(opts)
 	default:
 		panic(fmt.Sprintf("Invalid database type %s", *dbType))
 	}
 
-	if seedData != nil && *seedData {
-		core.SeedData(timekeeper)
+	if *seed {
+		seedData(timekeeper)
+		if *seedOnly {
+			return
+		}
 	}
 
 	defer timekeeper.Close()
@@ -60,4 +65,8 @@ func main() {
 	// Wait for termination signal
 	sig := <-sigChan
 	log.Printf("Received signal %v, shutting down...", sig)
+}
+
+func seedData(timekeeper *core.TimeKeeper) {
+	core.SeedData(timekeeper)
 }

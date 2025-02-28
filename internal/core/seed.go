@@ -9,6 +9,16 @@ import (
 
 func SeedData(t *TimeKeeper) {
 	log.Println("Start seeding data...")
+	cat, err := t.storage.Categories().GetCategories()
+	if err != nil {
+		panic(err)
+	}
+
+	if len(cat) > 0 {
+		log.Println("Data already seeded.")
+		return
+	}
+
 	t.storage.Categories().AddCategory(models.Category{Id: models.WORK, Name: "Work"})
 	t.storage.Categories().AddCategory(models.Category{Id: models.ENTERTAINMENT, Name: "Entertainment"})
 	t.storage.Categories().AddCategory(models.Category{Id: models.PERSONAL, Name: "Personal"})
