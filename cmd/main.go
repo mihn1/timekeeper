@@ -4,6 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/mihn1/timekeeper/internal/core"
 	"github.com/mihn1/timekeeper/macos"
@@ -12,10 +15,9 @@ import (
 func main() {
 	// Define flags
 	dbType := flag.String("db", "sqlite", "Database type: 'sqlite' or 'inmem'")
-	dbPath := flag.String("dbpath", "./timekeeper.db", "Path to SQLite database file")
+	dbPath := flag.String("dbpath", "./db/timekeeper.db", "Path to SQLite database file")
 	seedData := flag.Bool("seed", false, "Seed initial data")
 
-	// Parse flags
 	flag.Parse()
 
 	var timekeeper *core.TimeKeeper
@@ -51,5 +53,11 @@ func main() {
 	observer := macos.NewObserver(timekeeper)
 	go observer.StartObserving()
 
-	select {}
+	// Set up channel to listen for interrupt signals
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// Wait for termination signal
+	sig := <-sigChan
+	log.Printf("Received signal %v, shutting down...", sig)
 }

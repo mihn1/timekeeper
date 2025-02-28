@@ -54,9 +54,15 @@ func NewTimeKeeperSqlite(opts TimeKeeperOptions) *TimeKeeper {
 		log.Fatalf("Error opening database: %v\n", err)
 	}
 
+	db.SetMaxOpenConns(1)
 	_, err = db.Exec("PRAGMA busy_timeout = 5000;")
 	if err != nil {
 		log.Fatalf("Error setting busy_timeout: %v\n", err)
+	}
+
+	_, err = db.Exec("PRAGMA journal_mode = WAL;")
+	if err != nil {
+		log.Fatalf("Error setting journal_mode: %v\n", err)
 	}
 
 	t := &TimeKeeper{
