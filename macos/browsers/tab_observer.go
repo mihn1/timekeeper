@@ -4,8 +4,9 @@ package browsers
 #include <stdio.h>
 #include <stdlib.h>
 
-void startTabObserver(int pid, const char *browserName, const char *script);
+int startTabObserver(int pid, const char *browserName, const char *script);
 void cleanupAllObservers(void);
+void cleanupObserverByName(const char *name);
 */
 import "C"
 import (
@@ -41,7 +42,6 @@ func cleanup() {
 	mu.Lock()
 	defer mu.Unlock()
 
-	// Call Objective-C cleanup
 	C.cleanupAllObservers()
 }
 
@@ -70,7 +70,7 @@ func goTabChangeCallback(info *C.char, browserName *C.char) {
 	})
 }
 
-func StartTabObserver(pid int, browserName string, t *core.TimeKeeper) {
+func StartTabObserver(pid int, browserName string, t *core.TimeKeeper) bool {
 	mu.Lock()
 	if timekeeper == nil {
 		timekeeper = t
@@ -90,13 +90,25 @@ func StartTabObserver(pid int, browserName string, t *core.TimeKeeper) {
 		script = safariScript
 	default:
 		log.Printf("Unsupported browser: %v", browserName)
-		return
+		return false
 	}
 
 	cScript := C.CString(script)
 	defer C.free(unsafe.Pointer(cScript))
 
-	C.startTabObserver(C.int(pid), cBrowserName, cScript)
+	res := C.startTabObserver(C.int(pid), cBrowserName, cScript)
+	return res == 1
+}
+
+func StopTabObserver(browserName string) {
+	log.Printf("🛑 Stopping tab observer for %v...", browserName)
+	mu.Lock()
+	defer mu.Unlock()
+
+	cBrowserName := C.CString(browserName)
+	defer C.free(unsafe.Pointer(cBrowserName))
+
+	C.cleanupObserverByName(cBrowserName)
 }
 
 const (

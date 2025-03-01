@@ -73,12 +73,26 @@ void cleanupObserver(ObserverData *data) {
   free(data);
 }
 
+// Cleanup an observer by name
+void cleanupObserverByName(const char *name) {
+  for (int i = 0; i < observerCount; i++) {
+    if (observerList[i] && observerList[i]->context &&
+        observerList[i]->context->name &&
+        strcmp(observerList[i]->context->name, name) == 0) {
+      
+      ObserverData *data = observerList[i];
+      removeObserver(data);
+      cleanupObserver(data);
+    }
+  }
+}
+
 // Cleanup all observers.
 void cleanupAllObservers(void) {
-  for (int i = 0; i < observerCount; i++) {
-    if (observerList[i]) {
+  for (int i = 0; i < MAX_OBSERVERS; i++) {
+    if (observerList[i] != NULL) {
       cleanupObserver(observerList[i]);
-      observerList[i] = NULL;
+      observerList[i] = NULL; // No need to call remove observer as we're cleaning up all
     }
   }
   observerCount = 0;
@@ -173,29 +187,35 @@ void tabChangeCallback(AXObserverRef observer, AXUIElementRef element,
 }
 
 // Registers all accessibility notifications.
-void registerAllAXEvents(AXObserverRef observer, AXUIElementRef appElement,
+int registerAllAXEvents(AXObserverRef observer, AXUIElementRef appElement,
                          ObserverContext *context) {
   CFStringRef events[] = {
     kAXTitleChangedNotification,
     kAXFocusedUIElementChangedNotification,
     kAXFocusedWindowChangedNotification,
   };
+  int successCount = 0;
   size_t eventCount = sizeof(events) / sizeof(events[0]);
   for (size_t i = 0; i < eventCount; i++) {
-    if (AXObserverAddNotification(observer, appElement, events[i], context) == kAXErrorSuccess) {
+    AXError error = AXObserverAddNotification(observer, appElement, events[i], context);
+    if (error == kAXErrorSuccess) {
       NSLog(@"✅ Listening for event: %@", events[i]);
+      successCount++;
     } else {
-      NSLog(@"❌ Failed to observe event: %@", events[i]);
+        NSLog(@"❌ Failed to observe event: %@ (code %d)", 
+            events[i], 
+            error);    
     }
   }
+  return successCount;
 }
 
 // Starts the observer for a given application.
-void startTabObserver(int pid, const char *browserName, const char *script) {
+int startTabObserver(int pid, const char *browserName, const char *script) {
   AXUIElementRef appElement = AXUIElementCreateApplication(pid);
   if (!appElement) {
     NSLog(@"❌ Failed to get main app AXUIElement");
-    return;
+    return 0;
   }
   
   ObserverData *data = (ObserverData *)malloc(sizeof(ObserverData));
@@ -204,7 +224,7 @@ void startTabObserver(int pid, const char *browserName, const char *script) {
     NSLog(@"❌ Failed to allocate context");
     free(data);
     CFRelease(appElement);
-    return;
+    return 0;
   }
   data->context->name = strdup(browserName);
   data->context->script = strdup(script);
@@ -213,19 +233,27 @@ void startTabObserver(int pid, const char *browserName, const char *script) {
     NSLog(@"❌ Failed to create AXObserver");
     cleanupObserver(data);
     CFRelease(appElement);
-    return;
+    return 0;
   }
   
   CFRunLoopAddSource(CFRunLoopGetCurrent(),
                      AXObserverGetRunLoopSource(data->observer),
                      kCFRunLoopDefaultMode);
   
-  registerAllAXEvents(data->observer, appElement, data->context);
+  int eventCount = registerAllAXEvents(data->observer, appElement, data->context);
+  if (eventCount == 0) {
+    NSLog(@"❌ Failed to register any events");
+    cleanupObserver(data);
+    CFRelease(appElement);
+    return 0;
+  }
   
   data->pid = pid;
   addObserver(data);
   
-  atexit(cleanupAllObservers);
+  // atexit(cleanupAllObservers);
   
   CFRelease(appElement);
+
+  return 1;
 }

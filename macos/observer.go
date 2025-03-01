@@ -1,7 +1,7 @@
 package macos
 
 import (
-	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -34,25 +34,41 @@ var (
 
 func (o *Observer) StartObserving() error {
 	macos.RunApp(func(app appkit.Application, delegate *appkit.ApplicationDelegate) {
-		fmt.Println("Starting")
+		log.Println("Starting observers")
 
 		ws := appkit.Workspace_SharedWorkspace()
 		notificationCenter := ws.NotificationCenter()
+
+		// Register for launching a new app
+		notificationCenter.AddObserverForNameObjectQueueUsingBlock(
+			"NSWorkspaceDidLaunchApplicationNotification",
+			nil,
+			foundation.OperationQueue_MainQueue(),
+			func(notification foundation.Notification) {
+				event, pid := getEvent(notification)
+				o.registerBrowserObserver(pid, event.AppName)
+			})
+
+		// Register for activating an app
 		notificationCenter.AddObserverForNameObjectQueueUsingBlock(
 			"NSWorkspaceDidActivateApplicationNotification",
 			nil,
 			foundation.OperationQueue_MainQueue(),
 			func(notification foundation.Notification) {
 				event, pid := getEvent(notification)
+				o.registerBrowserObserver(pid, event.AppName)
+				o.timekeeper.PushEvent(event) // Push event to timekeeper in case of app activation
+			})
 
-				switch event.AppName {
-				case constants.BRAVE, constants.GOOGLE_CHROME, constants.SAFARI:
-					o.registerBrowserObserver(pid, event.AppName)
-				}
-
-				o.timekeeper.PushEvent(event)
-			},
-		)
+		// Register for terminating an app
+		notificationCenter.AddObserverForNameObjectQueueUsingBlock(
+			"NSWorkspaceDidTerminateApplicationNotification",
+			nil,
+			foundation.OperationQueue_MainQueue(),
+			func(notification foundation.Notification) {
+				event, _ := getEvent(notification)
+				o.stopBrowserObserver(event.AppName)
+			})
 	})
 
 	return nil
@@ -74,11 +90,32 @@ func getEvent(notification foundation.Notification) (models.AppSwitchEvent, int)
 }
 
 func (o *Observer) registerBrowserObserver(pid int, browserName string) {
+	switch browserName {
+	case constants.BRAVE, constants.GOOGLE_CHROME, constants.SAFARI:
+		o.mu.Lock()
+		defer o.mu.Unlock()
+
+		if val, ok := o.browserListeners[browserName]; !ok || !val {
+			log.Printf("Registering browser observer for %v", browserName)
+			success := browsers.StartTabObserver(pid, browserName, o.timekeeper)
+			if !success {
+				log.Printf("Failed to start observer for %v", browserName)
+				return
+			}
+
+			o.browserListeners[browserName] = true
+		}
+	}
+}
+
+func (o *Observer) stopBrowserObserver(browserName string) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	if !o.browserListeners[browserName] {
-		browsers.StartTabObserver(pid, browserName, o.timekeeper)
-		o.browserListeners[browserName] = true
+	if _, ok := o.browserListeners[browserName]; !ok {
+		return
 	}
+
+	browsers.StopTabObserver(browserName)
+	o.browserListeners[browserName] = false
 }
