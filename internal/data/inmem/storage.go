@@ -1,15 +1,13 @@
 package inmem
 
-import (
-	"github.com/mihn1/timekeeper/internal/data"
-)
+import "github.com/mihn1/timekeeper/internal/data/interfaces"
 
 type InmemStorage struct {
-	categoryStore            data.CategoryStore
-	ruleStore                data.RuleStore
-	appAggregationStore      data.AppAggregationStore
-	categoryAggregationStore data.CategoryAggregationStore
-	eventStore               data.EventStore
+	categoryStore            interfaces.CategoryStore
+	ruleStore                interfaces.RuleStore
+	appAggregationStore      interfaces.AppAggregationStore
+	categoryAggregationStore interfaces.CategoryAggregationStore
+	eventStore               interfaces.EventStore
 }
 
 func NewInmemStorage() *InmemStorage {
@@ -22,23 +20,23 @@ func NewInmemStorage() *InmemStorage {
 	}
 }
 
-func (s *InmemStorage) Categories() data.CategoryStore {
+func (s *InmemStorage) Categories() interfaces.CategoryStore {
 	return s.categoryStore
 }
 
-func (s *InmemStorage) Rules() data.RuleStore {
+func (s *InmemStorage) Rules() interfaces.RuleStore {
 	return s.ruleStore
 }
 
-func (s *InmemStorage) AppAggregations() data.AppAggregationStore {
+func (s *InmemStorage) AppAggregations() interfaces.AppAggregationStore {
 	return s.appAggregationStore
 }
 
-func (s *InmemStorage) CategoryAggregations() data.CategoryAggregationStore {
+func (s *InmemStorage) CategoryAggregations() interfaces.CategoryAggregationStore {
 	return s.categoryAggregationStore
 }
 
-func (s *InmemStorage) Events() data.EventStore {
+func (s *InmemStorage) Events() interfaces.EventStore {
 	return s.eventStore
 }
 

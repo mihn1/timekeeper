@@ -1,4 +1,4 @@
-package data
+package interfaces
 
 import (
 	"github.com/mihn1/timekeeper/internal/models"

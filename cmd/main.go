@@ -29,7 +29,7 @@ func main() {
 	switch *dbType {
 	case "sqlite":
 		if dbPath == nil {
-			defaultDbPath := "./timekeeper.db"
+			defaultDbPath := "./db/timekeeper.db"
 			dbPath = &defaultDbPath // Default db path
 		}
 

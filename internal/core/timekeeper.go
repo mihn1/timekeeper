@@ -6,8 +6,8 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mihn1/timekeeper/internal/core/resolvers"
-	"github.com/mihn1/timekeeper/internal/data"
 	"github.com/mihn1/timekeeper/internal/data/inmem"
+	"github.com/mihn1/timekeeper/internal/data/interfaces"
 	"github.com/mihn1/timekeeper/internal/data/sqlite"
 	"github.com/mihn1/timekeeper/internal/datatypes"
 	"github.com/mihn1/timekeeper/internal/models"
@@ -29,7 +29,7 @@ type TimeKeeperOptions struct {
 type TimeKeeper struct {
 	curAppEvent  *models.AppSwitchEvent
 	opts         TimeKeeperOptions
-	storage      data.Storage
+	storage      interfaces.Storage
 	isEnabled    bool
 	eventChannel chan models.AppSwitchEvent
 }

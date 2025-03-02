@@ -8,7 +8,7 @@ import (
 )
 
 func SeedData(t *TimeKeeper) {
-	log.Println("Start seeding data...")
+	log.Println("Start seeding interfaces...")
 	cat, err := t.storage.Categories().GetCategories()
 	if err != nil {
 		panic(err)

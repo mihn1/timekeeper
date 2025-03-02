@@ -4,16 +4,16 @@ import (
 	"database/sql"
 	"sync"
 
-	"github.com/mihn1/timekeeper/internal/data"
+	"github.com/mihn1/timekeeper/internal/data/interfaces"
 )
 
 type SqliteStorage struct {
 	db                       *sql.DB
-	categoryStore            data.CategoryStore
-	ruleStore                data.RuleStore
-	appAggregationStore      data.AppAggregationStore
-	categoryAggregationStore data.CategoryAggregationStore
-	eventStore               data.EventStore
+	categoryStore            interfaces.CategoryStore
+	ruleStore                interfaces.RuleStore
+	appAggregationStore      interfaces.AppAggregationStore
+	categoryAggregationStore interfaces.CategoryAggregationStore
+	eventStore               interfaces.EventStore
 }
 
 func NewSqliteStorage(db *sql.DB) *SqliteStorage {
@@ -28,23 +28,23 @@ func NewSqliteStorage(db *sql.DB) *SqliteStorage {
 	}
 }
 
-func (s *SqliteStorage) Categories() data.CategoryStore {
+func (s *SqliteStorage) Categories() interfaces.CategoryStore {
 	return s.categoryStore
 }
 
-func (s *SqliteStorage) Rules() data.RuleStore {
+func (s *SqliteStorage) Rules() interfaces.RuleStore {
 	return s.ruleStore
 }
 
-func (s *SqliteStorage) AppAggregations() data.AppAggregationStore {
+func (s *SqliteStorage) AppAggregations() interfaces.AppAggregationStore {
 	return s.appAggregationStore
 }
 
-func (s *SqliteStorage) CategoryAggregations() data.CategoryAggregationStore {
+func (s *SqliteStorage) CategoryAggregations() interfaces.CategoryAggregationStore {
 	return s.categoryAggregationStore
 }
 
-func (s *SqliteStorage) Events() data.EventStore {
+func (s *SqliteStorage) Events() interfaces.EventStore {
 	return s.eventStore
 }
 

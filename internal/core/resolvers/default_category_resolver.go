@@ -2,17 +2,17 @@ package resolvers
 
 import (
 	"github.com/mihn1/timekeeper/internal/constants"
-	"github.com/mihn1/timekeeper/internal/data"
+	"github.com/mihn1/timekeeper/internal/data/interfaces"
 	"github.com/mihn1/timekeeper/internal/models"
 	"golang.org/x/exp/slices"
 )
 
 type DefaultCategoryResolver struct {
-	RuleStore     data.RuleStore
-	CategoryStore data.CategoryStore
+	RuleStore     interfaces.RuleStore
+	CategoryStore interfaces.CategoryStore
 }
 
-func NewDefaultCategoryResolver(ruleStore data.RuleStore, categoryStore data.CategoryStore) *DefaultCategoryResolver {
+func NewDefaultCategoryResolver(ruleStore interfaces.RuleStore, categoryStore interfaces.CategoryStore) *DefaultCategoryResolver {
 	return &DefaultCategoryResolver{
 		RuleStore:     ruleStore,
 		CategoryStore: categoryStore,

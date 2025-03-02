@@ -1,4 +1,4 @@
-package data
+package interfaces
 
 type Storage interface {
 	Categories() CategoryStore
