@@ -1,7 +1,7 @@
 package resolvers
 
 import (
-	"github.com/mihn1/timekeeper/internal/constants"
+	"github.com/mihn1/timekeeper/constants"
 	"github.com/mihn1/timekeeper/internal/data/interfaces"
 	"github.com/mihn1/timekeeper/internal/models"
 	"golang.org/x/exp/slices"

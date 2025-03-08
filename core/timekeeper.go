@@ -2,14 +2,15 @@ package core
 
 import (
 	"database/sql"
-	"log"
+	"log/slog"
+	"os" // Added for os.Exit
 
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/mihn1/timekeeper/internal/core/resolvers"
+	"github.com/mihn1/timekeeper/core/resolvers"
+	"github.com/mihn1/timekeeper/datatypes"
 	"github.com/mihn1/timekeeper/internal/data/inmem"
 	"github.com/mihn1/timekeeper/internal/data/interfaces"
 	"github.com/mihn1/timekeeper/internal/data/sqlite"
-	"github.com/mihn1/timekeeper/internal/datatypes"
 	"github.com/mihn1/timekeeper/internal/models"
 )
 
@@ -24,59 +25,73 @@ var (
 type TimeKeeperOptions struct {
 	StoreEvents bool
 	StoragePath string
+	Logger      *slog.Logger
 }
 
 type TimeKeeper struct {
 	curAppEvent  *models.AppSwitchEvent
 	opts         TimeKeeperOptions
-	storage      interfaces.Storage
+	Storage      interfaces.Storage
 	isEnabled    bool
 	eventChannel chan models.AppSwitchEvent
+	logger       *slog.Logger
 }
 
 func NewTimeKeeperInMem(opts TimeKeeperOptions) *TimeKeeper {
 	t := &TimeKeeper{
-		storage:      inmem.NewInmemStorage(),
+		Storage:      inmem.NewInmemStorage(),
 		eventChannel: make(chan models.AppSwitchEvent),
 		opts:         opts,
+		logger:       opts.Logger,
 	}
 	return t
 }
 
+func (t *TimeKeeper) SetLogger(logger *slog.Logger) {
+	t.logger = logger
+}
+
+func (t *TimeKeeper) Logger() *slog.Logger {
+	return t.logger
+}
+
 func NewTimeKeeperSqlite(opts TimeKeeperOptions) *TimeKeeper {
 	if opts.StoragePath == "" {
-		log.Println("No storage path provided. Using default path.")
 		opts.StoragePath = "./timekeeper.db"
 	}
 
 	db, err := sql.Open("sqlite3", opts.StoragePath)
 	if err != nil {
-		log.Fatalf("Error opening database: %v\n", err)
+		opts.Logger.Error("Error opening database", "error", err, "path", opts.StoragePath)
+		os.Exit(1) // Maintain fatal behavior
 	}
 
 	db.SetMaxOpenConns(1)
 	_, err = db.Exec("PRAGMA busy_timeout = 5000;")
 	if err != nil {
-		log.Fatalf("Error setting busy_timeout: %v\n", err)
+		opts.Logger.Error("Error setting busy_timeout", "error", err)
+		os.Exit(1) // Maintain fatal behavior
 	}
 
 	_, err = db.Exec("PRAGMA journal_mode = WAL;")
 	if err != nil {
-		log.Fatalf("Error setting journal_mode: %v\n", err)
+		opts.Logger.Error("Error setting journal_mode", "error", err)
+		os.Exit(1) // Maintain fatal behavior
 	}
 
 	t := &TimeKeeper{
-		storage:      sqlite.NewSqliteStorage(db),
+		Storage:      sqlite.NewSqliteStorage(db),
 		eventChannel: make(chan models.AppSwitchEvent),
 		opts:         opts,
+		logger:       opts.Logger,
 	}
 	return t
 }
 
 func (t *TimeKeeper) Close() {
-	log.Println("Closing TimeKeeper...")
+	t.logger.Info("Closing TimeKeeper...")
 	t.Disable()
-	t.storage.Close()
+	t.Storage.Close()
 }
 
 func (t *TimeKeeper) Disable() {
@@ -88,8 +103,10 @@ func (t *TimeKeeper) IsEnabled() bool {
 }
 
 func (t *TimeKeeper) StartTracking() {
+	t.logger.Info("Starting TimeKeeper...")
+
 	t.isEnabled = true
-	defaultResolver = resolvers.NewDefaultCategoryResolver(t.storage.Rules(), t.storage.Categories())
+	defaultResolver = resolvers.NewDefaultCategoryResolver(t.Storage.Rules(), t.Storage.Categories())
 
 	// Start listening for events
 	go func() {
@@ -100,12 +117,14 @@ func (t *TimeKeeper) StartTracking() {
 }
 
 func (t *TimeKeeper) Report(date datatypes.DateOnly) {
-	log.Printf("-------------TimeKeeper Report for %s-------------\n", date)
-	appAggrs, _ := t.storage.AppAggregations().GetAppAggregationsByDate(date)
-	catAggrs, _ := t.storage.CategoryAggregations().GetCategoryAggregationsByDate(date)
-	log.Printf("App Aggregation: %v\n", appAggrs)
-	log.Printf("Category Aggregation: %v\n", catAggrs)
-	log.Println("-------------------------------------------------------------------------------------------------")
+	t.logger.Info("TimeKeeper Report", "date", date)
+
+	appAggrs, _ := t.Storage.AppAggregations().GetAppAggregationsByDate(date)
+	catAggrs, _ := t.Storage.CategoryAggregations().GetCategoryAggregationsByDate(date)
+
+	t.logger.Info("App Aggregation", "data", appAggrs)
+	t.logger.Info("Category Aggregation", "data", catAggrs)
+	t.logger.Info("-------------------------------------------------------------------------------------------------")
 }
 
 func (t *TimeKeeper) PushEvent(event models.AppSwitchEvent) {
@@ -115,7 +134,7 @@ func (t *TimeKeeper) PushEvent(event models.AppSwitchEvent) {
 }
 
 func (t *TimeKeeper) handleEvent(event *models.AppSwitchEvent) {
-	log.Printf("Received event: %v\n", event)
+	t.logger.Debug("Received event", "event", event)
 
 	if t.curAppEvent == nil {
 		t.curAppEvent = event
@@ -128,7 +147,7 @@ func (t *TimeKeeper) handleEvent(event *models.AppSwitchEvent) {
 	}
 
 	if isSameEvent(t.curAppEvent, event) {
-		log.Printf("Same event detected: %v\n", event)
+		t.logger.Debug("Same event detected", "event", event)
 		return
 	}
 
@@ -137,9 +156,9 @@ func (t *TimeKeeper) handleEvent(event *models.AppSwitchEvent) {
 
 	// store the current app event
 	if t.opts.StoreEvents {
-		err := t.storage.Events().AddEvent(t.curAppEvent)
+		err := t.Storage.Events().AddEvent(t.curAppEvent)
 		if err != nil {
-			log.Printf("Error storing event: %v\n", err)
+			t.logger.Error("Error storing event", "error", err)
 		}
 	}
 
@@ -150,15 +169,15 @@ func (t *TimeKeeper) handleEvent(event *models.AppSwitchEvent) {
 func (t *TimeKeeper) aggregateNewEvent(event *models.AppSwitchEvent) {
 	elapsedTime := event.StartTime.Sub(t.curAppEvent.StartTime).Milliseconds()
 
-	_, err := t.storage.AppAggregations().AggregateAppEvent(t.curAppEvent, elapsedTime)
+	_, err := t.Storage.AppAggregations().AggregateAppEvent(t.curAppEvent, elapsedTime)
 	if err != nil {
-		log.Printf("Error aggregating app event for %s: %v\n", event.AppName, err)
+		t.logger.Error("Error aggregating app event", "app", event.AppName, "error", err)
 		return
 	}
 
 	catId, err := t.aggregateCategory(t.curAppEvent, elapsedTime) // Call after aggregateEvent
 	if err != nil {
-		log.Printf("Error aggregating category for %s: %v\n", event.AppName, err)
+		t.logger.Error("Error aggregating category", "app", event.AppName, "error", err)
 		return
 	}
 
@@ -171,16 +190,17 @@ func (t *TimeKeeper) aggregateCategory(event *models.AppSwitchEvent, elapsedTime
 		return catId, err
 	}
 
-	cat, err := t.storage.Categories().GetCategory(catId)
+	cat, err := t.Storage.Categories().GetCategory(catId)
 	if err != nil {
-		log.Printf("Error getting category: %v\n", err)
+		t.logger.Error("Error getting category", "error", err)
 		return catId, err
 	}
 
-	log.Printf("%v resolved for %v - %v", cat.Name, event.AppName, event.AdditionalData)
-	_, err = t.storage.CategoryAggregations().AggregateCategory(cat, event.GetEventDate(), elapsedTime)
+	t.logger.Info("Category resolved", "category", cat.Name, "app", event.AppName, "data", event.AdditionalData)
+
+	_, err = t.Storage.CategoryAggregations().AggregateCategory(cat, event.GetEventDate(), elapsedTime)
 	if err != nil {
-		log.Printf("Error saving category aggregation: %v\n", err)
+		t.logger.Error("Error saving category aggregation", "error", err)
 		return catId, err
 	}
 

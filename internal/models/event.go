@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mihn1/timekeeper/internal/datatypes"
+	"github.com/mihn1/timekeeper/datatypes"
 )
 
 type EventId int

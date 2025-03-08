@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mihn1/timekeeper/internal/constants"
-	"github.com/mihn1/timekeeper/internal/core"
+	"github.com/mihn1/timekeeper/constants"
+	"github.com/mihn1/timekeeper/core"
 	"github.com/mihn1/timekeeper/internal/models"
 	"github.com/mihn1/timekeeper/macos/browsers"
 	"github.com/progrium/darwinkit/macos"
@@ -34,7 +34,7 @@ var (
 
 func (o *Observer) StartObserving() error {
 	macos.RunApp(func(app appkit.Application, delegate *appkit.ApplicationDelegate) {
-		log.Println("Starting observers")
+		o.timekeeper.Logger().Info("Starting observers")
 
 		ws := appkit.Workspace_SharedWorkspace()
 		notificationCenter := ws.NotificationCenter()

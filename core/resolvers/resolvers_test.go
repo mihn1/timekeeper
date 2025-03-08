@@ -3,7 +3,7 @@ package resolvers
 import (
 	"testing"
 
-	"github.com/mihn1/timekeeper/internal/constants"
+	"github.com/mihn1/timekeeper/constants"
 	"github.com/mihn1/timekeeper/internal/models"
 	"github.com/stretchr/testify/assert"
 )

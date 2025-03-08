@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"sync"
 
-	"github.com/mihn1/timekeeper/internal/datatypes"
+	"github.com/mihn1/timekeeper/datatypes"
 	"github.com/mihn1/timekeeper/internal/models"
 )
 

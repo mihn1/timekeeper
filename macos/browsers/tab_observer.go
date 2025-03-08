@@ -19,8 +19,8 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/mihn1/timekeeper/internal/constants"
-	"github.com/mihn1/timekeeper/internal/core"
+	"github.com/mihn1/timekeeper/core"
+	"github.com/mihn1/timekeeper/constants"
 	"github.com/mihn1/timekeeper/internal/models"
 )
 
@@ -52,7 +52,7 @@ func goTabChangeCallback(info *C.char, browserName *C.char) {
 
 	idx := strings.IndexByte(tabInfoRaw, '|')
 	if idx == -1 {
-		log.Println("Can't parse chrome's tab info")
+		timekeeper.Logger().Info("Can't parse chrome's tab info")
 		return
 	}
 

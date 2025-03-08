@@ -18,6 +18,14 @@ func NewDateOnly(t time.Time) DateOnly {
 	return DateOnly{Time: normalized}
 }
 
+func NewDateOnlyFromStr(dateStr string) (DateOnly, error) {
+	parsedTime, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return DateOnly{}, err
+	}
+	return NewDateOnly(parsedTime), nil
+}
+
 // Scan implements the sql.Scanner interface
 func (d *DateOnly) Scan(value interface{}) error {
 	if value == nil {

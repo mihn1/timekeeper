@@ -1,9 +1,7 @@
 package inmem
 
 import (
-	"log"
-
-	"github.com/mihn1/timekeeper/internal/datatypes"
+	"github.com/mihn1/timekeeper/datatypes"
 	"github.com/mihn1/timekeeper/internal/models"
 	"github.com/mihn1/timekeeper/utils"
 )
@@ -19,7 +17,6 @@ func NewAppAggregationStore() *AppAggregationStore {
 }
 
 func (store *AppAggregationStore) AggregateAppEvent(event *models.AppSwitchEvent, elapsedTime int64) (*models.AppAggregation, error) {
-	log.Println("Aggregating app event inmem", event)
 	key := models.GetAppAggregationKey(event)
 	aggr, ok := store.Aggregations[key]
 

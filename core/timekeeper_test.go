@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mihn1/timekeeper/internal/constants"
-	"github.com/mihn1/timekeeper/internal/datatypes"
+	"github.com/mihn1/timekeeper/datatypes"
+	"github.com/mihn1/timekeeper/constants"
 	"github.com/mihn1/timekeeper/internal/models"
 	"github.com/stretchr/testify/assert"
 )
@@ -47,7 +47,7 @@ func TestTimeKeeperEventProcessing(t *testing.T) {
 
 	// Check aggregations
 	date := datatypes.NewDateOnly(time.Now())
-	appAggr, err := timekeeper.storage.AppAggregations().GetAppAggregationsByDate(date)
+	appAggr, err := timekeeper.Storage.AppAggregations().GetAppAggregationsByDate(date)
 	assert.NoError(t, err)
 	assert.Len(t, appAggr, 1) // Only one app aggregation should exist
 }

@@ -1,28 +1,26 @@
 package core
 
 import (
-	"log"
-
-	"github.com/mihn1/timekeeper/internal/constants"
+	"github.com/mihn1/timekeeper/constants"
 	"github.com/mihn1/timekeeper/internal/models"
 )
 
 func SeedData(t *TimeKeeper) {
-	log.Println("Start seeding interfaces...")
-	cat, err := t.storage.Categories().GetCategories()
+	t.logger.Info("Start seeding interfaces...")
+	cat, err := t.Storage.Categories().GetCategories()
 	if err != nil {
 		panic(err)
 	}
 
 	if len(cat) > 0 {
-		log.Println("Data already seeded.")
+		t.logger.Info("Data already seeded.")
 		return
 	}
 
-	t.storage.Categories().AddCategory(models.Category{Id: models.WORK, Name: "Work"})
-	t.storage.Categories().AddCategory(models.Category{Id: models.ENTERTAINMENT, Name: "Entertainment"})
-	t.storage.Categories().AddCategory(models.Category{Id: models.PERSONAL, Name: "Personal"})
-	t.storage.Categories().AddCategory(models.Category{Id: models.UNDEFINED, Name: "Undefined"})
+	t.Storage.Categories().AddCategory(models.Category{Id: models.WORK, Name: "Work"})
+	t.Storage.Categories().AddCategory(models.Category{Id: models.ENTERTAINMENT, Name: "Entertainment"})
+	t.Storage.Categories().AddCategory(models.Category{Id: models.PERSONAL, Name: "Personal"})
+	t.Storage.Categories().AddCategory(models.Category{Id: models.UNDEFINED, Name: "Undefined"})
 
 	rules := make([]models.CategoryRule, 0)
 	rules = append(rules, models.CategoryRule{CategoryId: models.PERSONAL, AppName: constants.GOOGLE_CHROME})
@@ -72,8 +70,8 @@ func SeedData(t *TimeKeeper) {
 
 	for idx, rule := range rules {
 		rule.RuleId = idx + 1
-		t.storage.Rules().AddRule(rule)
+		t.Storage.Rules().AddRule(rule)
 	}
 
-	log.Println("Data seeding completed.")
+	t.logger.Info("Data seeding completed.")
 }

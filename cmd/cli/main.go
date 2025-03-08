@@ -4,11 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/mihn1/timekeeper/internal/core"
+	"github.com/mihn1/timekeeper/core"
 	"github.com/mihn1/timekeeper/macos"
 )
 
@@ -21,6 +22,7 @@ func main() {
 
 	flag.Parse()
 
+	logger := slog.Default()
 	var timekeeper *core.TimeKeeper
 	opts := core.TimeKeeperOptions{
 		StoreEvents: false,
@@ -29,21 +31,24 @@ func main() {
 	switch *dbType {
 	case "sqlite":
 		if dbPath == nil {
+			logger.Info("No database path provided, using default")
 			defaultDbPath := "./db/timekeeper.db"
 			dbPath = &defaultDbPath // Default db path
 		}
 
-		log.Println("Starting sqlite Timekeeper with database path:", *dbPath)
+		logger.Info("Starting sqlite Timekeeper", "DbPath", *dbPath)
 		opts.StoragePath = *dbPath
 		opts.StoreEvents = true // Only store events in SQLite
 		timekeeper = core.NewTimeKeeperSqlite(opts)
 	case "inmem":
-		log.Println("Starting inmem Timekeeper")
+		logger.Info("Starting inmem Timekeeper")
 		*seedOnly = true // Always seed data for inmem
 		timekeeper = core.NewTimeKeeperInMem(opts)
 	default:
 		panic(fmt.Sprintf("Invalid database type %s", *dbType))
 	}
+
+	timekeeper.SetLogger(logger)
 
 	if *seed {
 		seedData(timekeeper)
