@@ -9,8 +9,10 @@ import (
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/menu"
+	"github.com/wailsapp/wails/v2/pkg/menu/keys"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 //go:embed all:frontend/dist
@@ -58,29 +60,45 @@ func main() {
 	}
 }
 
-func createMenu(a *App) *menu.Menu {
+func createMenu(app *App) *menu.Menu {
 	appMenu := menu.NewMenu()
 
 	// File menu
 	fileMenu := appMenu.AddSubmenu("File")
-	fileMenu.AddText("Export Data...", nil, func(_ *menu.CallbackData) {
-		// Export data functionality
+	fileMenu.AddText("Export Data...", keys.CmdOrCtrl("E"), func(_ *menu.CallbackData) {
+		// Implement export functionality
+		app.logger.Info("Export functionality not yet implemented")
+	})
+	fileMenu.AddSeparator()
+	fileMenu.AddText("Quit", keys.CmdOrCtrl("Q"), func(_ *menu.CallbackData) {
+		runtime.Quit(app.ctx)
 	})
 
 	// TimeKeeper menu
 	tkMenu := appMenu.AddSubmenu("TimeKeeper")
-	tkMenu.AddCheckbox("Enable Tracking", true, nil, func(cd *menu.CallbackData) {
-		if cd.MenuItem.Checked {
-			a.EnableTracking()
-		} else {
-			a.DisableTracking()
-		}
+	tkMenu.AddText("Start Tracking", nil, func(_ *menu.CallbackData) {
+		app.EnableTracking()
+	})
+	tkMenu.AddText("Stop Tracking", nil, func(_ *menu.CallbackData) {
+		app.DisableTracking()
+	})
+	tkMenu.AddSeparator()
+	tkMenu.AddText("Preferences...", keys.CmdOrCtrl(","), func(_ *menu.CallbackData) {
+		// Implement preferences UI
+		app.logger.Info("Preferences not yet implemented")
 	})
 
-	// Debug menu
-	debugMenu := appMenu.AddSubmenu("Debug")
-	debugMenu.AddText("Force Cleanup", nil, func(_ *menu.CallbackData) {
-		a.ForceCleanup()
+	// View menu
+	viewMenu := appMenu.AddSubmenu("View")
+	viewMenu.AddText("Refresh Data", keys.CmdOrCtrl("R"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "timekeeper:data-updated")
+	})
+
+	// Help menu
+	helpMenu := appMenu.AddSubmenu("Help")
+	helpMenu.AddText("About TimeKeeper", nil, func(_ *menu.CallbackData) {
+		// Show about dialog
+		app.logger.Info("About dialog not yet implemented")
 	})
 
 	return appMenu

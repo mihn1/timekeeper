@@ -6,8 +6,8 @@ import (
 
 	"github.com/mihn1/timekeeper/core"
 	"github.com/mihn1/timekeeper/datatypes"
+	"github.com/mihn1/timekeeper/internal/models"
 	"github.com/mihn1/timekeeper/macos"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
@@ -33,10 +33,22 @@ func (a *App) Startup(ctx context.Context) {
 	slog.SetDefault(a.logger)
 
 	// Initialize TimeKeeper directly (not in goroutine)
-	a.initTimekeeper()
+	opts := core.TimeKeeperOptions{
+		StoreEvents: true,
+		StoragePath: "../db/timekeeper_wails.db",
+		Logger:      a.logger,
+	}
 
-	// Debug message to verify logger is working
-	runtime.LogInfo(ctx, "TimeKeeper initialized")
+	// Create a new TimeKeeper instance
+	a.timekeeper = core.NewTimeKeeperSqlite(opts)
+	core.SeedData(a.timekeeper)
+
+	// Set up the macOS observer
+	observer := macos.NewObserver(a.timekeeper.PushEvent, false, a.logger)
+	a.timekeeper.AddObserver(observer)
+
+	// Start tracking
+	a.timekeeper.StartTracking()
 }
 
 func (a *App) Shutdown(ctx context.Context) {
@@ -54,10 +66,28 @@ func (a *App) Greet(name string) string {
 }
 
 // Expose TimeKeeper functionality to JavaScript
-func (a *App) GetAppUsageData(dateStr string) any {
+func (a *App) GetAppUsageData(dateStr string) []*models.AppAggregation {
 	date, _ := datatypes.NewDateOnlyFromStr(dateStr)
 	data, _ := a.timekeeper.Storage.AppAggregations().GetAppAggregationsByDate(date)
 	return data
+}
+
+func (a *App) GetCategoryUsageData(dateStr string) any {
+	date, _ := datatypes.NewDateOnlyFromStr(dateStr)
+	data, _ := a.timekeeper.Storage.CategoryAggregations().GetCategoryAggregationsByDate(date)
+
+	// Enrich with category names
+	result := make([]map[string]any, 0, len(data))
+	for _, catAggr := range data {
+		cat, _ := a.timekeeper.Storage.Categories().GetCategory(catAggr.CategoryId)
+		result = append(result, map[string]any{
+			"Id":          catAggr.CategoryId,
+			"Name":        cat.Name,
+			"TimeElapsed": catAggr.TimeElapsed,
+		})
+	}
+
+	return result
 }
 
 func (a *App) EnableTracking() {
@@ -85,25 +115,6 @@ func (a *App) IsTrackingEnabled() bool {
 func (a *App) ForceCleanup() {
 	a.logger.Info("Force cleaning up resources...")
 	a.Shutdown(a.ctx)
-}
-
-func (a *App) initTimekeeper() {
-	opts := core.TimeKeeperOptions{
-		StoreEvents: true,
-		StoragePath: "../db/timekeeper_wails.db",
-		Logger:      a.logger,
-	}
-
-	// Create a new TimeKeeper instance
-	a.timekeeper = core.NewTimeKeeperSqlite(opts)
-	core.SeedData(a.timekeeper)
-
-	// Set up the macOS observer
-	observer := macos.NewObserver(a.timekeeper.PushEvent, false, a.logger)
-	a.timekeeper.AddObserver(observer)
-
-	// Start tracking
-	a.timekeeper.StartTracking()
 }
 
 // Add more methods to expose TimeKeeper functionality...

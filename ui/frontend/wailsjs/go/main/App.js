@@ -18,6 +18,10 @@ export function GetAppUsageData(arg1) {
   return window['go']['main']['App']['GetAppUsageData'](arg1);
 }
 
+export function GetCategoryUsageData(arg1) {
+  return window['go']['main']['App']['GetCategoryUsageData'](arg1);
+}
+
 export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
 }
