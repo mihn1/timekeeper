@@ -104,7 +104,7 @@ func (s *AppAggregationStore) GetAppAggregationsByDate(date datatypes.DateOnly) 
 	}
 	defer rows.Close()
 
-	var aggregations []*models.AppAggregation
+	var aggregations []*models.AppAggregation = make([]*models.AppAggregation, 0)
 	for rows.Next() {
 		var appAggr models.AppAggregation
 		err = rows.Scan(&appAggr.AppName, &appAggr.Date, &appAggr.TimeElapsed, &appAggr.AdditionalData)

@@ -113,7 +113,7 @@ func (s *CategoryAggregations) GetCategoryAggregationsByDate(date datatypes.Date
 		return nil, err
 	}
 
-	var aggregations []*models.CategoryAggregation
+	var aggregations []*models.CategoryAggregation = make([]*models.CategoryAggregation, 0)
 	for rows.Next() {
 		aggregation := &models.CategoryAggregation{}
 		err = rows.Scan(&aggregation.CategoryId, &aggregation.Date, &aggregation.TimeElapsed)
