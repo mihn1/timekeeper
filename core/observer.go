@@ -1,5 +1,6 @@
 package core
 
 type Observer interface {
-	StartObserving(t *TimeKeeper) error
+	Start() error
+	Stop() error
 }

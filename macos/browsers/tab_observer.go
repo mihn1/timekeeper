@@ -19,13 +19,12 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/mihn1/timekeeper/core"
 	"github.com/mihn1/timekeeper/constants"
 	"github.com/mihn1/timekeeper/internal/models"
 )
 
-var timekeeper *core.TimeKeeper
 var mu sync.Mutex = sync.Mutex{}
+var callbackMap = make(map[string]func(models.AppSwitchEvent))
 
 func init() {
 	// Set up signal handling
@@ -42,6 +41,8 @@ func cleanup() {
 	mu.Lock()
 	defer mu.Unlock()
 
+	callbackMap = make(map[string]func(models.AppSwitchEvent))
+
 	C.cleanupAllObservers()
 }
 
@@ -52,7 +53,6 @@ func goTabChangeCallback(info *C.char, browserName *C.char) {
 
 	idx := strings.IndexByte(tabInfoRaw, '|')
 	if idx == -1 {
-		timekeeper.Logger().Info("Can't parse chrome's tab info")
 		return
 	}
 
@@ -63,21 +63,26 @@ func goTabChangeCallback(info *C.char, browserName *C.char) {
 		constants.KEY_BROWSER_TITLE: title,
 	}
 
-	timekeeper.PushEvent(models.AppSwitchEvent{
-		AppName:        C.GoString(browserName),
-		StartTime:      time.Now().UTC(),
-		AdditionalData: tabInfo,
-	})
+	if callback, ok := callbackMap[C.GoString(browserName)]; ok {
+		callback(models.AppSwitchEvent{
+			AppName:        C.GoString(browserName),
+			StartTime:      time.Now().UTC(),
+			AdditionalData: tabInfo,
+		})
+	}
 }
 
-func StartTabObserver(pid int, browserName string, t *core.TimeKeeper) bool {
-	mu.Lock()
-	if timekeeper == nil {
-		timekeeper = t
-	}
-	mu.Unlock()
-
+func StartTabObserver(pid int, browserName string, callback func(models.AppSwitchEvent)) bool {
 	log.Printf("🚀 Listening for tab changes in %v...", browserName)
+
+	mu.Lock()
+	defer mu.Unlock()
+	if _, ok := callbackMap[browserName]; ok {
+		log.Printf("Observer already running for %v", browserName)
+		return false
+	}
+
+	callbackMap[browserName] = callback
 
 	cBrowserName := C.CString(browserName)
 	defer C.free(unsafe.Pointer(cBrowserName))
@@ -104,6 +109,8 @@ func StopTabObserver(browserName string) {
 	log.Printf("🛑 Stopping tab observer for %v...", browserName)
 	mu.Lock()
 	defer mu.Unlock()
+
+	delete(callbackMap, browserName)
 
 	cBrowserName := C.CString(browserName)
 	defer C.free(unsafe.Pointer(cBrowserName))

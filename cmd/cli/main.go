@@ -26,6 +26,7 @@ func main() {
 	var timekeeper *core.TimeKeeper
 	opts := core.TimeKeeperOptions{
 		StoreEvents: false,
+		Logger:      logger,
 	}
 
 	switch *dbType {
@@ -48,8 +49,6 @@ func main() {
 		panic(fmt.Sprintf("Invalid database type %s", *dbType))
 	}
 
-	timekeeper.SetLogger(logger)
-
 	if *seed {
 		seedData(timekeeper)
 		if *seedOnly {
@@ -59,9 +58,9 @@ func main() {
 
 	defer timekeeper.Close()
 
+	observer := macos.NewObserver(timekeeper.PushEvent, logger)
+	timekeeper.AddObserver(observer)
 	timekeeper.StartTracking()
-	observer := macos.NewObserver(timekeeper)
-	go observer.StartObserving()
 
 	// Set up channel to listen for interrupt signals
 	sigChan := make(chan os.Signal, 1)

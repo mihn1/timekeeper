@@ -3,7 +3,7 @@ package core
 import (
 	"database/sql"
 	"log/slog"
-	"os" // Added for os.Exit
+	"os"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mihn1/timekeeper/core/resolvers"
@@ -34,6 +34,7 @@ type TimeKeeper struct {
 	Storage      interfaces.Storage
 	isEnabled    bool
 	eventChannel chan models.AppSwitchEvent
+	observers    []Observer
 	logger       *slog.Logger
 }
 
@@ -45,14 +46,6 @@ func NewTimeKeeperInMem(opts TimeKeeperOptions) *TimeKeeper {
 		logger:       opts.Logger,
 	}
 	return t
-}
-
-func (t *TimeKeeper) SetLogger(logger *slog.Logger) {
-	t.logger = logger
-}
-
-func (t *TimeKeeper) Logger() *slog.Logger {
-	return t.logger
 }
 
 func NewTimeKeeperSqlite(opts TimeKeeperOptions) *TimeKeeper {
@@ -88,10 +81,31 @@ func NewTimeKeeperSqlite(opts TimeKeeperOptions) *TimeKeeper {
 	return t
 }
 
+func (t *TimeKeeper) SetLogger(logger *slog.Logger) {
+	t.logger = logger
+}
+
+func (t *TimeKeeper) Logger() *slog.Logger {
+	return t.logger
+}
+
+func (t *TimeKeeper) AddObserver(o Observer) {
+	if t.observers == nil {
+		t.observers = make([]Observer, 0)
+	}
+	t.observers = append(t.observers, o)
+}
+
 func (t *TimeKeeper) Close() {
 	t.logger.Info("Closing TimeKeeper...")
 	t.Disable()
 	t.Storage.Close()
+
+	if t.observers != nil {
+		for _, obs := range t.observers {
+			obs.Stop()
+		}
+	}
 }
 
 func (t *TimeKeeper) Disable() {
@@ -108,12 +122,21 @@ func (t *TimeKeeper) StartTracking() {
 	t.isEnabled = true
 	defaultResolver = resolvers.NewDefaultCategoryResolver(t.Storage.Rules(), t.Storage.Categories())
 
+	// Start all observers
+	if t.observers != nil {
+		for _, obs := range t.observers {
+			go obs.Start()
+		}
+	}
+
 	// Start listening for events
 	go func() {
 		for event := range t.eventChannel {
 			t.handleEvent(&event)
 		}
 	}()
+
+	t.logger.Info("TimeKeeper started")
 }
 
 func (t *TimeKeeper) Report(date datatypes.DateOnly) {
