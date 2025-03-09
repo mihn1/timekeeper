@@ -29,23 +29,21 @@ func (a *App) Startup(ctx context.Context) {
 
 	// Create Wails slog handler
 	wailsHandler := NewWailsHandler(ctx)
-
-	// Create a logger with the Wails handler
 	a.logger = slog.New(wailsHandler)
-
-	// Set as default logger
 	slog.SetDefault(a.logger)
 
-	// Debug message to verify logger is working
-	runtime.LogInfo(ctx, "Wails logger initialized")
-	a.logger.Info("Testing wailsLogger directly")
+	// Initialize TimeKeeper directly (not in goroutine)
+	a.initTimekeeper()
 
-	go a.initTimekeeper()
+	// Debug message to verify logger is working
+	runtime.LogInfo(ctx, "TimeKeeper initialized")
 }
 
 func (a *App) Shutdown(ctx context.Context) {
 	if a.timekeeper != nil {
+		a.logger.Info("Shutting down TimeKeeper...")
 		a.timekeeper.Close()
+		a.timekeeper = nil // Prevent double-close
 	}
 }
 
@@ -56,25 +54,55 @@ func (a *App) Greet(name string) string {
 }
 
 // Expose TimeKeeper functionality to JavaScript
-func (a *App) GetAppUsageData(dateStr string) interface{} {
+func (a *App) GetAppUsageData(dateStr string) any {
 	date, _ := datatypes.NewDateOnlyFromStr(dateStr)
 	data, _ := a.timekeeper.Storage.AppAggregations().GetAppAggregationsByDate(date)
 	return data
 }
 
+func (a *App) EnableTracking() {
+	if a.timekeeper != nil && !a.timekeeper.IsEnabled() {
+		a.logger.Info("Enabling TimeKeeper tracking")
+		a.timekeeper.StartTracking()
+	}
+}
+
+func (a *App) DisableTracking() {
+	if a.timekeeper != nil && a.timekeeper.IsEnabled() {
+		a.logger.Info("Disabling TimeKeeper tracking")
+		a.timekeeper.Disable()
+	}
+}
+
+// Add this method to be called from JS
+func (a *App) IsTrackingEnabled() bool {
+	if a.timekeeper != nil {
+		return a.timekeeper.IsEnabled()
+	}
+	return false
+}
+
+func (a *App) ForceCleanup() {
+	a.logger.Info("Force cleaning up resources...")
+	a.Shutdown(a.ctx)
+}
+
 func (a *App) initTimekeeper() {
 	opts := core.TimeKeeperOptions{
 		StoreEvents: true,
-		StoragePath: "../db/timekeeper_wails.db", // Use relative path to existing DB
+		StoragePath: "../db/timekeeper_wails.db",
+		Logger:      a.logger,
 	}
 
 	// Create a new TimeKeeper instance
 	a.timekeeper = core.NewTimeKeeperSqlite(opts)
-
-	a.timekeeper.SetLogger(a.logger)
-	observer := macos.NewObserver(a.timekeeper.PushEvent, a.logger)
-	a.timekeeper.AddObserver(observer)
 	core.SeedData(a.timekeeper)
+
+	// Set up the macOS observer
+	observer := macos.NewObserver(a.timekeeper.PushEvent, false, a.logger)
+	a.timekeeper.AddObserver(observer)
+
+	// Start tracking
 	a.timekeeper.StartTracking()
 }
 

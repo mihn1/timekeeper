@@ -58,7 +58,7 @@ func main() {
 
 	defer timekeeper.Close()
 
-	observer := macos.NewObserver(timekeeper.PushEvent, logger)
+	observer := macos.NewObserver(timekeeper.PushEvent, true, logger)
 	timekeeper.AddObserver(observer)
 	timekeeper.StartTracking()
 
