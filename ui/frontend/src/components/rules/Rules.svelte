@@ -1,11 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { GetRules, GetRule, DeleteRule, GetCategories } from '../../wailsjs/go/main/App';
-  import { refreshData } from '../stores/timekeeper';
-  import Modal from './common/Modal.svelte';
-  import DataTable from './common/DataTable.svelte';
-  import CreateRuleModal from './modals/CreateRuleModal.svelte';
-  import CreateCategoryModal from './modals/CreateCategoryModal.svelte';
+  import { GetRules, GetRule, DeleteRule, GetCategories } from '../../../wailsjs/go/main/App';
+  import { refreshData } from '../../stores/timekeeper';
+  import Modal from '../common/Modal.svelte';
+  import DataTable from '../common/DataTable.svelte';
+  import CreateRuleModal from './CreateRuleModal.svelte';
+  import CreateCategoryModal from '../categories/CreateCategoryModal.svelte';
 
   type Rule = {
     RuleId: number;
@@ -41,17 +41,22 @@
   let searchTerm = '';
   let pageSizes = [5, 10, 25, 50];
   let selectedPageSize = 10;
+  let isGroupedView = true;
 
   $: if ($refreshData) {
     loadRules();
   }
 
-  $: filteredRules = rules.filter(rule => 
-    rule.AppName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    rule.Expression.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    rule.AdditionalDataKey.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (getCategoryName(rule.CategoryId) || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  $: filteredRules = rules
+    .filter(rule => 
+      rule.AppName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      rule.Expression.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      rule.AdditionalDataKey.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (getCategoryName(rule.CategoryId) || '').toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => b.Priority - a.Priority); // Sort by priority (highest first)
+
+  $: groupedRules = groupRulesByAppName(filteredRules);
 
   onMount(() => {
     loadRules();
@@ -112,10 +117,6 @@
     showCreateRuleModal = true;
   }
   
-  function openCreateCategoryModal() {
-    showCreateCategoryModal = true;
-  }
-  
   function handleRuleAdded() {
     loadRules();
     showCreateRuleModal = false;
@@ -128,6 +129,28 @@
   
   function handlePageSizeChange(event) {
     selectedPageSize = parseInt(event.target.value);
+  }
+
+  function groupRulesByAppName(rules: Rule[]) {
+    const grouped = {};
+    
+    rules.forEach(rule => {
+      if (!grouped[rule.AppName]) {
+        grouped[rule.AppName] = [];
+      }
+      grouped[rule.AppName].push(rule);
+    });
+    
+    // Convert to array format for rendering
+    return Object.keys(grouped).map(appName => ({
+      appName,
+      rules: grouped[appName],
+      _isGroupHeader: true
+    }));
+  }
+  
+  function toggleGroupView() {
+    isGroupedView = !isGroupedView;
   }
 
   const tableColumns: Column[] = [
@@ -166,10 +189,10 @@
     <p class="mb-4 text-red-600">This action cannot be undone.</p>
     
     <div class="flex justify-end gap-2">
-      <button class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400" on:click={cancelDelete}>
+      <button class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 cursor-pointer" on:click={cancelDelete}>
         Cancel
       </button>
-      <button class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700" on:click={executeDelete}>
+      <button class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 cursor-pointer" on:click={executeDelete}>
         Delete
       </button>
     </div>
@@ -180,16 +203,25 @@
   <h1 class="text-2xl font-bold mb-6 text-gray-800">Rule Management</h1>
   
   <!-- Action Buttons -->
-  <div class="flex gap-4 mb-6">
-    <button 
-      class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 flex items-center"
-    on:click={openCreateRuleModal}
-    >
-      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-      </svg>
-      Add Rule
-    </button>
+  <div class="flex justify-between mb-6">
+    <div class="flex gap-4">
+      <button 
+        class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 flex items-center cursor-pointer"
+        on:click={openCreateRuleModal}
+      >
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+        </svg>
+        Add Rule
+      </button>
+    </div>
+    
+    <div class="flex items-center">
+      <label class="inline-flex items-center cursor-pointer">
+        <input type="checkbox" class="form-checkbox h-5 w-5 text-blue-600" bind:checked={isGroupedView}>
+        <span class="ml-2 text-sm text-gray-700">Group by App Name</span>
+      </label>
+    </div>
   </div>
   
   <!-- Rule List Section -->
@@ -234,6 +266,28 @@
       <div class="flex justify-center items-center py-12">
         <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
       </div>
+    {:else if isGroupedView}
+      {#each groupedRules as group}
+        <div class="border-b border-gray-200 last:border-b-0">
+          <div class="bg-gray-100 p-3 font-medium">
+            {group.appName} ({group.rules.length} {group.rules.length === 1 ? 'rule' : 'rules'})
+          </div>
+          <DataTable 
+            data={group.rules} 
+            columns={tableColumns}
+            on:rowAction={(e) => confirmDelete(e.detail.row)}
+            actionIcon="trash"
+            emptyMessage="No rules found"
+            pageSize={group.rules.length}
+            noPagination={true}
+            noHeader={false} 
+            />
+        </div>
+      {:else}
+        <div class="p-8 text-center text-gray-500">
+          No rules found
+        </div>
+      {/each}
     {:else}
       <DataTable 
         data={filteredRules} 

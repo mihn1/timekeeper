@@ -2,7 +2,7 @@ package main
 
 import "github.com/mihn1/timekeeper/internal/models"
 
-func (a *App) GetRules(name string) []models.CategoryRule {
+func (a *App) GetRules() []models.CategoryRule {
 	rule, err := a.timekeeper.Storage.Rules().GetRules()
 
 	if err != nil {

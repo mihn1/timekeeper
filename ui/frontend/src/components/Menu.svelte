@@ -7,9 +7,9 @@
 </script>
 
 <nav class="menu">
-  <button on:click={() => navigate('dashboard')}>Dashboard</button>
-  <button on:click={() => navigate('rules')}>Rule Management</button>
-  <button on:click={() => navigate('categories')}>Category Management</button>
+  <button class="cursor-pointer" on:click={() => navigate('dashboard')}>Dashboard</button>
+  <button class="cursor-pointer" on:click={() => navigate('rules')}>Rule Management</button>
+  <button class="cursor-pointer" on:click={() => navigate('categories')}>Category Management</button>
 </nav>
 
 <style>

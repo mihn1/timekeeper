@@ -26,7 +26,7 @@ export function GetCategoryUsageData(arg1:string):Promise<any>;
 
 export function GetRule(arg1:number):Promise<models.CategoryRule>;
 
-export function GetRules(arg1:string):Promise<Array<models.CategoryRule>>;
+export function GetRules():Promise<Array<models.CategoryRule>>;
 
 export function Greet(arg1:string):Promise<string>;
 

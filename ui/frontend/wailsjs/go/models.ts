@@ -57,7 +57,6 @@ export namespace models {
 	    Id: string;
 	    Name: string;
 	    Description: string;
-	    CategoryTypeId: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Category(source);
@@ -68,7 +67,6 @@ export namespace models {
 	        this.Id = source["Id"];
 	        this.Name = source["Name"];
 	        this.Description = source["Description"];
-	        this.CategoryTypeId = source["CategoryTypeId"];
 	    }
 	}
 	export class CategoryRule {

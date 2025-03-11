@@ -5,8 +5,8 @@
   import { IsTrackingEnabled, EnableTracking, DisableTracking } from '../wailsjs/go/main/App';
   import { EventsOn } from '../wailsjs/runtime/runtime';
   import Dashboard from './components/Dashboard.svelte';
-  import Rules from './components/Rules.svelte';
-  import Categories from './components/Categories.svelte';
+  import Rules from './components/rules/Rules.svelte';
+  import Categories from './components/categories/Categories.svelte';
   import Menu from './components/Menu.svelte';
   import StatusBar from './components/StatusBar.svelte';
 

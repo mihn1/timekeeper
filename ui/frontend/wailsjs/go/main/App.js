@@ -50,8 +50,8 @@ export function GetRule(arg1) {
   return window['go']['main']['App']['GetRule'](arg1);
 }
 
-export function GetRules(arg1) {
-  return window['go']['main']['App']['GetRules'](arg1);
+export function GetRules() {
+  return window['go']['main']['App']['GetRules']();
 }
 
 export function Greet(arg1) {

@@ -8,7 +8,7 @@
     Status: <span class:active={isEnabled}>{isEnabled ? 'Active' : 'Paused'}</span>
   </div>
   
-  <button class="toggle-button" class:active={isEnabled} on:click={onToggle}>
+  <button class="toggle-button cursor-pointer" class:active={isEnabled} on:click={onToggle}>
     {isEnabled ? 'Pause Tracking' : 'Start Tracking'}
   </button>
 </div>
