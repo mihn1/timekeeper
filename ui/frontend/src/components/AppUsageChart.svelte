@@ -54,7 +54,6 @@
     
     // Generate nice colors
     const colors = generateColors(labels.length);
-    
     chartData = {
       labels: labels,
       datasets: [
@@ -114,7 +113,7 @@
 
 <div class="chart-wrapper">
   {#if data.length > 0}
-    <Doughnut data={chartData} />
+    <Doughnut data={chartData} options={chartOptions} />
   {:else}
     <div class="no-data">No application usage data for this date</div>
   {/if}

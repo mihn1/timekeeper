@@ -53,6 +53,48 @@ export namespace models {
 		    return a;
 		}
 	}
+	export class Category {
+	    Id: string;
+	    Name: string;
+	    Description: string;
+	    CategoryTypeId: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Category(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Id = source["Id"];
+	        this.Name = source["Name"];
+	        this.Description = source["Description"];
+	        this.CategoryTypeId = source["CategoryTypeId"];
+	    }
+	}
+	export class CategoryRule {
+	    RuleId: number;
+	    CategoryId: string;
+	    AppName: string;
+	    AdditionalDataKey: string;
+	    Expression: string;
+	    IsRegex: boolean;
+	    Priority: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CategoryRule(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.RuleId = source["RuleId"];
+	        this.CategoryId = source["CategoryId"];
+	        this.AppName = source["AppName"];
+	        this.AdditionalDataKey = source["AdditionalDataKey"];
+	        this.Expression = source["Expression"];
+	        this.IsRegex = source["IsRegex"];
+	        this.Priority = source["Priority"];
+	    }
+	}
 
 }
 

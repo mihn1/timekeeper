@@ -1,27 +1,26 @@
 <script>
-  import logo from './assets/images/logo-universal.png'
-  import {Greet} from '../wailsjs/go/main/App.js'
   import { onMount, onDestroy } from 'svelte';
-  import { EventsOn } from '../wailsjs/runtime/runtime';
-  import { IsTrackingEnabled, EnableTracking, DisableTracking } from '../wailsjs/go/main/App';
-  import Dashboard from './components/Dashboard.svelte';
-  import Header from './components/Header.svelte';
-  import StatusBar from './components/StatusBar.svelte';
+  import { currentView } from './stores/navigation';
   import { trackingEnabled, refreshData } from './stores/timekeeper';
+  import { IsTrackingEnabled, EnableTracking, DisableTracking } from '../wailsjs/go/main/App';
+  import { EventsOn } from '../wailsjs/runtime/runtime';
+  import Dashboard from './components/Dashboard.svelte';
+  import Rules from './components/Rules.svelte';
+  import Categories from './components/Categories.svelte';
+  import Menu from './components/Menu.svelte';
+  import StatusBar from './components/StatusBar.svelte';
 
   let isInitialized = false;
   let unsubscribe;
 
   onMount(async () => {
-    // Check if tracking is enabled
     const enabled = await IsTrackingEnabled();
     trackingEnabled.set(enabled);
-    
-    // Listen for real-time updates
+
     unsubscribe = EventsOn('timekeeper:data-updated', () => {
       refreshData.set(Date.now());
     });
-    
+
     isInitialized = true;
   });
 
@@ -29,10 +28,9 @@
     if (unsubscribe) unsubscribe();
   });
 
-  // Toggle tracking functionality
   async function toggleTracking() {
     const enabled = $trackingEnabled;
-    
+
     if (enabled) {
       await DisableTracking();
       trackingEnabled.set(false);
@@ -44,11 +42,17 @@
 </script>
 
 <main>
-  <Header />
+  <Menu />
   
   {#if isInitialized}
     <div class="content">
-      <Dashboard />
+      {#if $currentView === 'dashboard'}
+        <Dashboard />
+      {:else if $currentView === 'rules'}
+        <Rules />
+      {:else if $currentView === 'categories'}
+        <Categories />
+      {/if}
     </div>
     
     <StatusBar 
@@ -60,8 +64,6 @@
       <p>Initializing TimeKeeper...</p>
     </div>
   {/if}
-
-  <!-- <img alt="Wails logo" id="logo" src="{logo}"> -->
 </main>
 
 <style>
@@ -88,17 +90,4 @@
     font-size: 1.2rem;
     color: #555;
   }
-
-  #logo {
-    display: block;
-    width: 50%;
-    height: 50%;
-    margin: auto;
-    padding: 10% 0 0;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: 100% 100%;
-    background-origin: content-box;
-  }
-
 </style>
