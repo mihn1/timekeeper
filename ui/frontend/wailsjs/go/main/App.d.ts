@@ -28,6 +28,4 @@ export function GetRule(arg1:number):Promise<models.CategoryRule>;
 
 export function GetRules():Promise<Array<models.CategoryRule>>;
 
-export function Greet(arg1:string):Promise<string>;
-
 export function IsTrackingEnabled():Promise<boolean>;

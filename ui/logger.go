@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"sort"
+	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -19,6 +22,37 @@ func NewWailsHandler(ctx context.Context) *WailsHandler {
 // Enabled implements slog.Handler.
 func (h *WailsHandler) Enabled(_ context.Context, level slog.Level) bool {
 	return h.ctx != nil // Only enabled if context is set
+}
+
+// formatAttrs formats a map of attributes as key=value pairs in a clean format
+func formatAttrs(attrs map[string]any) string {
+	if len(attrs) == 0 {
+		return ""
+	}
+
+	// Sort keys for consistent output
+	keys := make([]string, 0, len(attrs))
+	for k := range attrs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	// Build formatted string
+	var pairs []string
+	for _, k := range keys {
+		v := attrs[k]
+		// Handle different value types for better formatting
+		switch val := v.(type) {
+		case string:
+			pairs = append(pairs, fmt.Sprintf("%s=\"%s\"", k, val))
+		case error:
+			pairs = append(pairs, fmt.Sprintf("%s=\"%s\"", k, val.Error()))
+		default:
+			pairs = append(pairs, fmt.Sprintf("%s=%v", k, val))
+		}
+	}
+
+	return strings.Join(pairs, " ")
 }
 
 // Handle implements slog.Handler.
@@ -40,32 +74,25 @@ func (h *WailsHandler) Handle(_ context.Context, record slog.Record) error {
 		return true
 	})
 
+	// Format the log message
+	var logMsg string
+	if hasAttrs {
+		formattedAttrs := formatAttrs(attrs)
+		logMsg = fmt.Sprintf("%s %s", message, formattedAttrs)
+	} else {
+		logMsg = message
+	}
+
 	// Send to appropriate Wails log function based on level
 	switch {
 	case record.Level >= slog.LevelError:
-		if hasAttrs {
-			runtime.LogErrorf(h.ctx, "%s %v", message, attrs)
-		} else {
-			runtime.LogError(h.ctx, message)
-		}
+		runtime.LogError(h.ctx, logMsg)
 	case record.Level >= slog.LevelWarn:
-		if hasAttrs {
-			runtime.LogWarningf(h.ctx, "%s %v", message, attrs)
-		} else {
-			runtime.LogWarning(h.ctx, message)
-		}
+		runtime.LogWarning(h.ctx, logMsg)
 	case record.Level >= slog.LevelInfo:
-		if hasAttrs {
-			runtime.LogInfof(h.ctx, "%s %v", message, attrs)
-		} else {
-			runtime.LogInfo(h.ctx, message)
-		}
+		runtime.LogInfo(h.ctx, logMsg)
 	default:
-		if hasAttrs {
-			runtime.LogDebugf(h.ctx, "%s %v", message, attrs)
-		} else {
-			runtime.LogDebug(h.ctx, message)
-		}
+		runtime.LogDebug(h.ctx, logMsg)
 	}
 
 	return nil
@@ -74,7 +101,7 @@ func (h *WailsHandler) Handle(_ context.Context, record slog.Record) error {
 // WithAttrs implements slog.Handler.
 func (h *WailsHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	// For simplicity, we'll just return the same handler
-	// In a production-grade implementation, you would clone and store the attrs
+	// TODO: clone and store the attrs
 	return h
 }
 

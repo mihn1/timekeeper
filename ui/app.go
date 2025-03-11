@@ -28,7 +28,7 @@ func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 
 	// Create Wails slog handler
-	wailsHandler := NewWailsHandler(ctx)
+	var wailsHandler slog.Handler = NewWailsHandler(ctx)
 	a.logger = slog.New(wailsHandler)
 	slog.SetDefault(a.logger)
 
@@ -57,12 +57,6 @@ func (a *App) Shutdown(ctx context.Context) {
 		a.timekeeper.Close()
 		a.timekeeper = nil // Prevent double-close
 	}
-}
-
-// Greet returns a greeting for the given name
-func (a *App) Greet(name string) string {
-	a.logger.Info("Hello {Name}, It's show time!", "Name", name)
-	return name
 }
 
 // Expose TimeKeeper functionality to JavaScript

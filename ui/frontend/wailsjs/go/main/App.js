@@ -54,10 +54,6 @@ export function GetRules() {
   return window['go']['main']['App']['GetRules']();
 }
 
-export function Greet(arg1) {
-  return window['go']['main']['App']['Greet'](arg1);
-}
-
 export function IsTrackingEnabled() {
   return window['go']['main']['App']['IsTrackingEnabled']();
 }
