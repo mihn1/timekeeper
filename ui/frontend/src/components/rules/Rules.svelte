@@ -5,6 +5,7 @@
   import Modal from '../common/Modal.svelte';
   import DataTable from '../common/DataTable.svelte';
   import CreateRuleModal from './CreateRuleModal.svelte';
+  import EditRuleModal from './EditRuleModal.svelte';
   import CreateCategoryModal from '../categories/CreateCategoryModal.svelte';
   import { dtos } from '../../../wailsjs/go/models';
   import type { Column } from '../../types/table';
@@ -15,8 +16,10 @@
   let isLoadingCategories = true;
   let showDeleteModal = false;
   let showCreateRuleModal = false;
+  let showEditRuleModal = false;
   let showCreateCategoryModal = false;
   let ruleToDelete: dtos.RuleListItem | null = null;
+  let ruleToEdit: dtos.RuleListItem | null = null;
   let searchTerm = '';
   let pageSizes = [5, 10, 25, 50];
   let selectedPageSize = 10;
@@ -63,7 +66,6 @@
     isLoading = true;
     try {
       rules = await GetRules();
-      console.log('Rules:', rules);
     } catch (err) {
       console.error('Error loading rules:', err);
     } finally {
@@ -145,6 +147,17 @@
     isGroupedView = !isGroupedView;
   }
 
+  function editRule(rule: dtos.RuleListItem) {
+    ruleToEdit = rule;
+    showEditRuleModal = true;
+  }
+
+  function handleRuleEdited() {
+    loadRules();
+    showEditRuleModal = false;
+    ruleToEdit = null;
+  }
+
   const tableColumns: Column[] = [
     { 
       key: 'categoryId', 
@@ -158,6 +171,20 @@
     { key: 'isRegex', title: 'Regex', sortable: true, formatter: (value) => value ? 'Yes' : 'No' },
     { key: 'priority', title: 'Priority', sortable: true },
   ];
+
+  // Add actions to handle both edit and delete
+  const rowActions = [
+    { 
+      icon: 'edit', 
+      handler: editRule,
+      title: 'Edit rule'
+    },
+    {
+      icon: 'trash', 
+      handler: confirmDelete,
+      title: 'Delete rule'
+    }
+  ];
 </script>
 
 <!-- Modals -->
@@ -166,6 +193,14 @@
   categories={categories}
   on:close={() => showCreateRuleModal = false}
   on:ruleAdded={handleRuleAdded}
+/>
+
+<EditRuleModal
+  show={showEditRuleModal}
+  rule={ruleToEdit}
+  categories={categories}
+  on:close={() => { showEditRuleModal = false; ruleToEdit = null; }}
+  on:ruleEdited={handleRuleEdited}
 />
 
 <CreateCategoryModal 
@@ -271,8 +306,7 @@
           <DataTable 
             data={group.rules} 
             columns={tableColumns}
-            on:rowAction={(e) => confirmDelete(e.detail.row)}
-            actionIcon="trash"
+            rowActions={rowActions}
             emptyMessage="No rules found"
             pageSize={group.rules.length}
             noPagination={true}
@@ -288,8 +322,7 @@
       <DataTable 
         data={filteredRules} 
         columns={tableColumns}
-        on:rowAction={(e) => confirmDelete(e.detail.row)}
-        actionIcon="trash"
+        rowActions={rowActions}
         emptyMessage="No rules found"
         pageSize={selectedPageSize}
       />

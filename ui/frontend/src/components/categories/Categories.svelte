@@ -5,6 +5,7 @@
   import Modal from '../common/Modal.svelte';
   import DataTable from '../common/DataTable.svelte';
   import CreateCategoryModal from './CreateCategoryModal.svelte';
+  import EditCategoryModal from './EditCategoryModal.svelte';
   import { dtos } from '../../../wailsjs/go/models';
   import type { Column } from '../../types/table'; // Import the shared type
 
@@ -12,7 +13,9 @@
   let isLoading = true;
   let showDeleteModal = false;
   let showCreateCategoryModal = false;
+  let showEditCategoryModal = false;
   let categoryToDelete = null;
+  let categoryToEdit = null;
   let searchTerm = '';
   let pageSizes = [5, 10, 25, 50];
   let selectedPageSize = 10;
@@ -77,10 +80,35 @@
     selectedPageSize = parseInt(event.target.value);
   }
 
+  function editCategory(category) {
+    console.log('Editing category:', category);
+    categoryToEdit = { ...category }; // Create a copy to avoid reference issues
+    showEditCategoryModal = true;
+  }
+
+  function handleCategoryEdited() {
+    loadCategories();
+    showEditCategoryModal = false;
+    categoryToEdit = null;
+  }
+
   const tableColumns: Column[] = [
     { key: 'id', title: 'ID', sortable: true },
     { key: 'name', title: 'Name', sortable: true },
     { key: 'description', title: 'Description', sortable: true }
+  ];
+
+  const rowActions = [
+    { 
+      icon: 'edit', 
+      handler: editCategory,
+      title: 'Edit category'
+    },
+    {
+      icon: 'trash', 
+      handler: confirmDelete,
+      title: 'Delete category'
+    }
   ];
 </script>
 
@@ -89,6 +117,13 @@
   show={showCreateCategoryModal}
   on:close={() => showCreateCategoryModal = false}
   on:categoryAdded={handleCategoryAdded}
+/>
+
+<EditCategoryModal
+  show={showEditCategoryModal}
+  category={categoryToEdit}
+  on:close={() => { showEditCategoryModal = false; categoryToEdit = null; }}
+  on:categoryEdited={handleCategoryEdited}
 />
 
 <!-- Delete Confirmation Modal -->
@@ -174,8 +209,7 @@
       <DataTable 
         data={filteredCategories} 
         columns={tableColumns}
-        on:rowAction={(e) => confirmDelete(e.detail.row)}
-        actionIcon="trash"
+        rowActions={rowActions}
         emptyMessage="No categories found"
         pageSize={selectedPageSize}
       />
