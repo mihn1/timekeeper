@@ -129,7 +129,9 @@ export namespace dtos {
 	    id: number;
 	    categoryId: number;
 	    appName: string;
+	    additionalDataKey: string;
 	    expression: string;
+	    isRegex: boolean;
 	    priority: number;
 	
 	    static createFrom(source: any = {}) {
@@ -141,7 +143,9 @@ export namespace dtos {
 	        this.id = source["id"];
 	        this.categoryId = source["categoryId"];
 	        this.appName = source["appName"];
+	        this.additionalDataKey = source["additionalDataKey"];
 	        this.expression = source["expression"];
+	        this.isRegex = source["isRegex"];
 	        this.priority = source["priority"];
 	    }
 	}

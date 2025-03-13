@@ -5,11 +5,13 @@ import (
 )
 
 type RuleListItem struct {
-	ID         int    `json:"id"`
-	CategoryID int    `json:"categoryId"`
-	AppName    string `json:"appName"`
-	Expression string `json:"expression"`
-	Priority   int    `json:"priority"`
+	ID                int    `json:"id"`
+	CategoryID        int    `json:"categoryId"`
+	AppName           string `json:"appName"`
+	AdditionalDataKey string `json:"additionalDataKey"`
+	Expression        string `json:"expression"`
+	IsRegex           bool   `json:"isRegex"`
+	Priority          int    `json:"priority"`
 }
 
 type RuleDetail struct {
@@ -80,11 +82,13 @@ func RuleListFromModels(rules []*models.CategoryRule) []*RuleListItem {
 	result := make([]*RuleListItem, len(rules))
 	for i, rule := range rules {
 		result[i] = &RuleListItem{
-			ID:         rule.RuleId,
-			CategoryID: int(rule.CategoryId),
-			AppName:    rule.AppName,
-			Expression: rule.Expression,
-			Priority:   rule.Priority,
+			ID:                rule.RuleId,
+			CategoryID:        int(rule.CategoryId),
+			AppName:           rule.AppName,
+			Expression:        rule.Expression,
+			IsRegex:           rule.IsRegex,
+			AdditionalDataKey: rule.AdditionalDataKey,
+			Priority:          rule.Priority,
 		}
 	}
 	return result

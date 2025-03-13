@@ -63,6 +63,7 @@
     isLoading = true;
     try {
       rules = await GetRules();
+      console.log('Rules:', rules);
     } catch (err) {
       console.error('Error loading rules:', err);
     } finally {
