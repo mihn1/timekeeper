@@ -2,22 +2,20 @@
   import { createEventDispatcher } from 'svelte';
   import { AddCategory } from '../../../wailsjs/go/main/App';
   import Modal from '../common/Modal.svelte';
-  import { models } from '../../../wailsjs/go/models';
+  import { dtos } from '../../../wailsjs/go/models';
   
   export let show = false;
   
   const dispatch = createEventDispatcher();
   
   type FormErrors = {
-    Id?: string;
     Name?: string;
     [key: string]: string;
   };
   
-  let newCategory: models.Category = { 
-    Id: '', 
-    Name: '',
-    Description: '',
+  let newCategory: dtos.CategoryCreate = { 
+    name: '',
+    description: '',
   };
   
   let formErrors: FormErrors = {};
@@ -26,12 +24,7 @@
     formErrors = {};
     let isValid = true;
     
-    if (!newCategory.Id.trim()) {
-      formErrors.Id = 'Category ID is required';
-      isValid = false;
-    }
-    
-    if (!newCategory.Name.trim()) {
+    if (!newCategory.name.trim()) {
       formErrors.Name = 'Category Name is required';
       isValid = false;
     }
@@ -53,9 +46,8 @@
   
   function resetForm() {
     newCategory = { 
-      Id: '', 
-      Name: '',
-      Description: '',
+      name: '',
+      description: '',
     };
     formErrors = {};
   }
@@ -70,25 +62,12 @@
   <div class="p-4">
     <div class="grid md:grid-cols-2 gap-4">
       <div>
-        <label for="category-id" class="block text-sm font-medium text-gray-700 mb-1">Category ID</label>
-        <input 
-          id="category-id"
-          type="text" 
-          class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 {formErrors.Id ? 'border-red-500' : 'border-gray-300'}" 
-          bind:value={newCategory.Id}
-        />
-        {#if formErrors.Id}
-          <p class="text-red-500 text-xs mt-1">{formErrors.Id}</p>
-        {/if}
-      </div>
-      
-      <div>
         <label for="category-name" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
         <input 
           id="category-name"
           type="text" 
           class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 {formErrors.Name ? 'border-red-500' : 'border-gray-300'}" 
-          bind:value={newCategory.Name}
+          bind:value={newCategory.name}
         />
         {#if formErrors.Name}
           <p class="text-red-500 text-xs mt-1">{formErrors.Name}</p>
@@ -101,7 +80,7 @@
           id="category-description"
           type="text" 
           class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 {formErrors.Description ? 'border-red-500' : 'border-gray-300'}" 
-          bind:value={newCategory.Description}
+          bind:value={newCategory.description}
         />
         {#if formErrors.Description}
           <p class="text-red-500 text-xs mt-1">{formErrors.Description}</p>

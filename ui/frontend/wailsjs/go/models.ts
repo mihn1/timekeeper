@@ -15,6 +15,163 @@ export namespace datatypes {
 
 }
 
+export namespace dtos {
+	
+	export class CategoryCreate {
+	    name: string;
+	    description: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CategoryCreate(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	    }
+	}
+	export class CategoryDetail {
+	    id: number;
+	    name: string;
+	    description: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CategoryDetail(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	    }
+	}
+	export class CategoryListItem {
+	    id: number;
+	    name: string;
+	    description: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CategoryListItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	    }
+	}
+	export class CategoryUpdate {
+	    id: number;
+	    name: string;
+	    description: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CategoryUpdate(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	    }
+	}
+	export class RuleCreate {
+	    categoryId: number;
+	    appName: string;
+	    additionalDataKey: string;
+	    expression: string;
+	    isRegex: boolean;
+	    priority: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new RuleCreate(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.categoryId = source["categoryId"];
+	        this.appName = source["appName"];
+	        this.additionalDataKey = source["additionalDataKey"];
+	        this.expression = source["expression"];
+	        this.isRegex = source["isRegex"];
+	        this.priority = source["priority"];
+	    }
+	}
+	export class RuleDetail {
+	    id: number;
+	    categoryId: number;
+	    appName: string;
+	    additionalDataKey: string;
+	    expression: string;
+	    isRegex: boolean;
+	    priority: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new RuleDetail(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.categoryId = source["categoryId"];
+	        this.appName = source["appName"];
+	        this.additionalDataKey = source["additionalDataKey"];
+	        this.expression = source["expression"];
+	        this.isRegex = source["isRegex"];
+	        this.priority = source["priority"];
+	    }
+	}
+	export class RuleListItem {
+	    id: number;
+	    categoryId: number;
+	    appName: string;
+	    expression: string;
+	    priority: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new RuleListItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.categoryId = source["categoryId"];
+	        this.appName = source["appName"];
+	        this.expression = source["expression"];
+	        this.priority = source["priority"];
+	    }
+	}
+	export class RuleUpdate {
+	    id: number;
+	    categoryId: number;
+	    appName: string;
+	    additionalDataKey: string;
+	    expression: string;
+	    isRegex: boolean;
+	    priority: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new RuleUpdate(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.categoryId = source["categoryId"];
+	        this.appName = source["appName"];
+	        this.additionalDataKey = source["additionalDataKey"];
+	        this.expression = source["expression"];
+	        this.isRegex = source["isRegex"];
+	        this.priority = source["priority"];
+	    }
+	}
+
+}
+
 export namespace models {
 	
 	export class AppAggregation {
@@ -52,46 +209,6 @@ export namespace models {
 		    }
 		    return a;
 		}
-	}
-	export class Category {
-	    Id: string;
-	    Name: string;
-	    Description: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new Category(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.Id = source["Id"];
-	        this.Name = source["Name"];
-	        this.Description = source["Description"];
-	    }
-	}
-	export class CategoryRule {
-	    RuleId: number;
-	    CategoryId: string;
-	    AppName: string;
-	    AdditionalDataKey: string;
-	    Expression: string;
-	    IsRegex: boolean;
-	    Priority: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new CategoryRule(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.RuleId = source["RuleId"];
-	        this.CategoryId = source["CategoryId"];
-	        this.AppName = source["AppName"];
-	        this.AdditionalDataKey = source["AdditionalDataKey"];
-	        this.Expression = source["Expression"];
-	        this.IsRegex = source["IsRegex"];
-	        this.Priority = source["Priority"];
-	    }
 	}
 
 }

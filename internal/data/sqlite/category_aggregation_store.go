@@ -36,7 +36,7 @@ func NewCategoryAggregationStore(db *sql.DB, mu *sync.RWMutex, tableName string)
 	return s
 }
 
-func (s *CategoryAggregations) AggregateCategory(cat models.Category, date datatypes.DateOnly, elapsedTime int64) (*models.CategoryAggregation, error) {
+func (s *CategoryAggregations) AggregateCategory(cat *models.Category, date datatypes.DateOnly, elapsedTime int64) (*models.CategoryAggregation, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

@@ -39,7 +39,7 @@ func (r *CategoryRule) IsMatch(event *AppSwitchEvent) (bool, error) {
 	return strings.Contains(strings.ToLower(val), strings.ToLower(r.Expression)), nil
 }
 
-func CmpRules(x, y CategoryRule) int {
+func CmpRules(x, y *CategoryRule) int {
 	if x.Priority > y.Priority {
 		return -1
 	} else if x.Priority < y.Priority {

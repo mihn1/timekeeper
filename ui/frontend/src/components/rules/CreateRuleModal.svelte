@@ -2,37 +2,26 @@
   import { createEventDispatcher } from 'svelte';
   import { AddRule } from '../../../wailsjs/go/main/App';
   import Modal from '../common/Modal.svelte';
+  import type { dtos } from '../../../wailsjs/go/models';
   
   export let show = false;
   export let categories = [];
   
   const dispatch = createEventDispatcher();
   
-  type Rule = {
-    RuleId: number;
-    CategoryId: string;
-    AppName: string;
-    AdditionalDataKey: string;
-    Expression: string;
-    IsRegex: boolean;
-    Priority: number;
-  };
-  
   type FormErrors = {
-    CategoryId?: string;
-    AppName?: string;
-    Expression?: string;
+    categoryId?: string;
+    appName?: string;
     [key: string]: string;
   };
   
-  let newRule: Rule = { 
-    RuleId: 0, 
-    CategoryId: '', 
-    AppName: '', 
-    AdditionalDataKey: '', 
-    Expression: '', 
-    IsRegex: false, 
-    Priority: 0 
+  let newRule: dtos.RuleCreate = { 
+    categoryId: 0, 
+    appName: '', 
+    additionalDataKey: '', 
+    expression: '', 
+    isRegex: false, 
+    priority: 0 
   };
   
   let formErrors: FormErrors = {};
@@ -41,18 +30,13 @@
     formErrors = {};
     let isValid = true;
     
-    if (!newRule.CategoryId.trim()) {
-      formErrors.CategoryId = 'Category ID is required';
+    if (newRule.categoryId == 0) {
+      formErrors.categoryId = 'Category ID is required';
       isValid = false;
     }
     
-    if (!newRule.AppName.trim()) {
-      formErrors.AppName = 'App Name is required';
-      isValid = false;
-    }
-    
-    if (!newRule.Expression.trim()) {
-      formErrors.Expression = 'Expression is required';
+    if (!newRule.appName.trim()) {
+      formErrors.appName = 'App Name is required';
       isValid = false;
     }
     
@@ -73,13 +57,12 @@
   
   function resetForm() {
     newRule = { 
-      RuleId: 0, 
-      CategoryId: '', 
-      AppName: '', 
-      AdditionalDataKey: '', 
-      Expression: '', 
-      IsRegex: false, 
-      Priority: 0 
+      categoryId: 0, 
+      appName: '', 
+      additionalDataKey: '', 
+      expression: '', 
+      isRegex: false, 
+      priority: 0 
     };
     formErrors = {};
   }
@@ -97,16 +80,16 @@
         <label for="category-select" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
         <select 
           id="category-select"
-          class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 {formErrors.CategoryId ? 'border-red-500' : 'border-gray-300'}"
-          bind:value={newRule.CategoryId}
+          class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 {formErrors.categoryId ? 'border-red-500' : 'border-gray-300'}"
+          bind:value={newRule.categoryId}
         >
           <option value="">Select a category...</option>
           {#each categories as category}
-            <option value={category.Id}>{category.Name}</option>
+            <option value={category.id}>{category.name}</option>
           {/each}
         </select>
-        {#if formErrors.CategoryId}
-          <p class="text-red-500 text-xs mt-1">{formErrors.CategoryId}</p>
+        {#if formErrors.categoryId}
+          <p class="text-red-500 text-xs mt-1">{formErrors.categoryId}</p>
         {/if}
       </div>
       
@@ -115,11 +98,11 @@
         <input 
           id="app-name"
           type="text" 
-          class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 {formErrors.AppName ? 'border-red-500' : 'border-gray-300'}" 
-          bind:value={newRule.AppName}
+          class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 {formErrors.appName ? 'border-red-500' : 'border-gray-300'}" 
+          bind:value={newRule.appName}
         />
-        {#if formErrors.AppName}
-          <p class="text-red-500 text-xs mt-1">{formErrors.AppName}</p>
+        {#if formErrors.appName}
+          <p class="text-red-500 text-xs mt-1">{formErrors.appName}</p>
         {/if}
       </div>
       
@@ -129,7 +112,7 @@
           id="additional-data-key"
           type="text" 
           class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300" 
-          bind:value={newRule.AdditionalDataKey}
+          bind:value={newRule.additionalDataKey}
         />
       </div>
       
@@ -138,12 +121,9 @@
         <input 
           id="expression"
           type="text" 
-          class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 {formErrors.Expression ? 'border-red-500' : 'border-gray-300'}" 
-          bind:value={newRule.Expression}
+          class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300" 
+          bind:value={newRule.expression}
         />
-        {#if formErrors.Expression}
-          <p class="text-red-500 text-xs mt-1">{formErrors.Expression}</p>
-        {/if}
       </div>
       
       <div>
@@ -152,13 +132,13 @@
           id="priority"
           type="number" 
           class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300" 
-          bind:value={newRule.Priority}
+          bind:value={newRule.priority}
         />
       </div>
       
       <div class="flex items-center">
         <label class="inline-flex items-center mt-4">
-          <input type="checkbox" class="form-checkbox h-5 w-5 text-blue-600" bind:checked={newRule.IsRegex} />
+          <input type="checkbox" class="form-checkbox h-5 w-5 text-blue-600" bind:checked={newRule.isRegex} />
           <span class="ml-2 text-sm text-gray-700">Is Regex</span>
         </label>
       </div>

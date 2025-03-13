@@ -35,7 +35,7 @@ func (a *App) Startup(ctx context.Context) {
 	// Initialize TimeKeeper directly (not in goroutine)
 	opts := core.TimeKeeperOptions{
 		StoreEvents: true,
-		StoragePath: "../db/timekeeper.db",
+		StoragePath: "../db/timekeeper-refactor.db",
 		Logger:      a.logger,
 	}
 

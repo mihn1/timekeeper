@@ -1,43 +1,22 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { GetRules, GetRule, DeleteRule, GetCategories } from '../../../wailsjs/go/main/App';
+  import { GetRules, DeleteRule, GetCategories } from '../../../wailsjs/go/main/App';
   import { refreshData } from '../../stores/timekeeper';
   import Modal from '../common/Modal.svelte';
   import DataTable from '../common/DataTable.svelte';
   import CreateRuleModal from './CreateRuleModal.svelte';
   import CreateCategoryModal from '../categories/CreateCategoryModal.svelte';
+  import { dtos } from '../../../wailsjs/go/models';
+  import type { Column } from '../../types/table'; // Import the shared type
 
-  type Rule = {
-    RuleId: number;
-    CategoryId: string;
-    AppName: string;
-    AdditionalDataKey: string;
-    Expression: string;
-    IsRegex: boolean;
-    Priority: number;
-  };
-  
-  type Category = {
-    Id: string;
-    Name: string;
-    Color?: string;
-  };
-  
-  type Column = {
-    key: string;
-    title: string;
-    sortable: boolean;
-    formatter?: (value: any) => string;
-  };
-
-  let rules: Rule[] = [];
-  let categories: Category[] = [];
+  let rules: dtos.RuleListItem[] = [];
+  let categories: dtos.CategoryListItem[] = [];
   let isLoading = true;
   let isLoadingCategories = true;
   let showDeleteModal = false;
   let showCreateRuleModal = false;
   let showCreateCategoryModal = false;
-  let ruleToDelete: Rule | null = null;
+  let ruleToDelete: dtos.RuleListItem | null = null;
   let searchTerm = '';
   let pageSizes = [5, 10, 25, 50];
   let selectedPageSize = 10;
@@ -49,12 +28,10 @@
 
   $: filteredRules = rules
     .filter(rule => 
-      rule.AppName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      rule.Expression.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      rule.AdditionalDataKey.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (getCategoryName(rule.CategoryId) || '').toLowerCase().includes(searchTerm.toLowerCase())
+      rule.appName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      rule.expression.toLowerCase().includes(searchTerm.toLowerCase())
     )
-    .sort((a, b) => b.Priority - a.Priority); // Sort by priority (highest first)
+    .sort((a, b) => b.priority - a.priority); // Sort by priority (highest first)
 
   $: groupedRules = groupRulesByAppName(filteredRules);
 
@@ -63,9 +40,9 @@
     loadCategories();
   });
 
-  function getCategoryName(categoryId: string): string {
-    const category = categories.find(c => c.Id === categoryId);
-    return category ? category.Name : categoryId;
+  function getCategoryName(categoryId: number): string {
+    const category = categories.find(c => c.id === categoryId);
+    return category ? category.name : '';
   }
 
   async function loadRules() {
@@ -90,7 +67,7 @@
     }
   }
 
-  function confirmDelete(rule: Rule) {
+  function confirmDelete(rule: dtos.RuleListItem) {
     ruleToDelete = rule;
     showDeleteModal = true;
   }
@@ -99,7 +76,7 @@
     if (!ruleToDelete) return;
     
     try {
-      await DeleteRule(ruleToDelete.RuleId);
+      await DeleteRule(ruleToDelete.id);
       showDeleteModal = false;
       ruleToDelete = null;
       loadRules();
@@ -131,14 +108,14 @@
     selectedPageSize = parseInt(event.target.value);
   }
 
-  function groupRulesByAppName(rules: Rule[]) {
+  function groupRulesByAppName(rules: dtos.RuleListItem[]) {
     const grouped = {};
     
     rules.forEach(rule => {
-      if (!grouped[rule.AppName]) {
-        grouped[rule.AppName] = [];
+      if (!grouped[rule.appName]) {
+        grouped[rule.appName] = [];
       }
-      grouped[rule.AppName].push(rule);
+      grouped[rule.appName].push(rule);
     });
     
     // Convert to array format for rendering
@@ -154,13 +131,12 @@
   }
 
   const tableColumns: Column[] = [
-    { key: 'CategoryId', title: 'Category', sortable: true, formatter: (value) => getCategoryName(value) },
-    { key: 'AppName', title: 'App Name', sortable: true },
-    { key: 'AdditionalDataKey', title: 'Data Key', sortable: true },
-    { key: 'Expression', title: 'Expression', sortable: true },
-    { key: 'IsRegex', title: 'Regex', sortable: true, formatter: (value) => value ? 'Yes' : 'No' },
-    { key: 'Priority', title: 'Priority', sortable: true },
-    { key: 'actions', title: 'Actions', sortable: false }
+    { key: 'categoryId', title: 'Category', sortable: true, formatter: (value) => getCategoryName(value) },
+    { key: 'appName', title: 'App Name', sortable: true },
+    { key: 'additionalDataKey', title: 'Data Key', sortable: true },
+    { key: 'expression', title: 'Expression', sortable: true },
+    { key: 'isRegex', title: 'Regex', sortable: true, formatter: (value) => value ? 'Yes' : 'No' },
+    { key: 'priority', title: 'Priority', sortable: true },
   ];
 </script>
 
@@ -185,7 +161,7 @@
   on:close={() => showDeleteModal = false}
 >
   <div class="p-4">
-    <p class="mb-4">Are you sure you want to delete this rule for <strong>{ruleToDelete?.AppName}</strong>?</p>
+    <p class="mb-4">Are you sure you want to delete this rule for <strong>{ruleToDelete?.appName}</strong>?</p>
     <p class="mb-4 text-red-600">This action cannot be undone.</p>
     
     <div class="flex justify-end gap-2">

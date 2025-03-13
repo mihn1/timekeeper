@@ -57,3 +57,11 @@ export function GetRules() {
 export function IsTrackingEnabled() {
   return window['go']['main']['App']['IsTrackingEnabled']();
 }
+
+export function UpdateCategory(arg1, arg2) {
+  return window['go']['main']['App']['UpdateCategory'](arg1, arg2);
+}
+
+export function UpdateRule(arg1, arg2) {
+  return window['go']['main']['App']['UpdateRule'](arg1, arg2);
+}

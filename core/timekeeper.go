@@ -219,7 +219,7 @@ func (t *TimeKeeper) aggregateCategory(event *models.AppSwitchEvent, elapsedTime
 		return catId, err
 	}
 
-	t.logger.Info("Category resolved", "CatName", cat.Name)
+	t.logger.Info("Category resolved", "CatName", cat.Name, "event", event)
 
 	_, err = t.Storage.CategoryAggregations().AggregateCategory(cat, event.GetEventDate(), elapsedTime)
 	if err != nil {

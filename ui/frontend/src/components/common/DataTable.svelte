@@ -1,8 +1,9 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  
+  import type { Column } from '../../types/table';
+
   export let data = [];
-  export let columns = [];
+  export let columns: Column[] = [];
   export let pageSize = 10;
   export let actionIcon = null;
   export let emptyMessage = "No data found";

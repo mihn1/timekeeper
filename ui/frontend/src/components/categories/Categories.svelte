@@ -1,12 +1,14 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
-  import { GetCategories, GetCategory, DeleteCategory } from '../../../wailsjs/go/main/App';
+  import { GetCategories, DeleteCategory } from '../../../wailsjs/go/main/App';
   import { refreshData } from '../../stores/timekeeper';
   import Modal from '../common/Modal.svelte';
   import DataTable from '../common/DataTable.svelte';
   import CreateCategoryModal from './CreateCategoryModal.svelte';
+  import { dtos } from '../../../wailsjs/go/models';
+  import type { Column } from '../../types/table'; // Import the shared type
 
-  let categories = [];
+  let categories: dtos.CategoryListItem[] = [];
   let isLoading = true;
   let showDeleteModal = false;
   let showCreateCategoryModal = false;
@@ -20,9 +22,8 @@
   }
 
   $: filteredCategories = categories.filter(category => 
-    category.Name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    category.Description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    category.Id?.toLowerCase().includes(searchTerm.toLowerCase())
+    category.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    category.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   onMount(() => {
@@ -33,6 +34,7 @@
     isLoading = true;
     try {
       categories = await GetCategories();
+      console.log('Categories:', categories);
     } catch (err) {
       console.error('Error loading categories:', err);
     } finally {
@@ -76,12 +78,10 @@
     selectedPageSize = parseInt(event.target.value);
   }
 
-  const tableColumns = [
-    { key: 'Id', title: 'ID', sortable: true },
-    { key: 'Name', title: 'Name', sortable: true },
-    { key: 'Description', title: 'Description', sortable: true },
-    { key: 'CategoryTypeId', title: 'Type', sortable: true },
-    { key: 'actions', title: 'Actions', sortable: false }
+  const tableColumns: Column[] = [
+    { key: 'id', title: 'ID', sortable: true },
+    { key: 'name', title: 'Name', sortable: true },
+    { key: 'description', title: 'Description', sortable: true }
   ];
 </script>
 

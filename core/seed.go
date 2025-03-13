@@ -6,7 +6,7 @@ import (
 )
 
 func SeedData(t *TimeKeeper) {
-	t.logger.Info("Start seeding interfaces...")
+	t.logger.Info("Start seeding data...")
 	cat, err := t.Storage.Categories().GetCategories()
 	if err != nil {
 		panic(err)
@@ -17,10 +17,10 @@ func SeedData(t *TimeKeeper) {
 		return
 	}
 
-	t.Storage.Categories().AddCategory(models.Category{Id: models.WORK, Name: "Work"})
-	t.Storage.Categories().AddCategory(models.Category{Id: models.ENTERTAINMENT, Name: "Entertainment"})
-	t.Storage.Categories().AddCategory(models.Category{Id: models.PERSONAL, Name: "Personal"})
-	t.Storage.Categories().AddCategory(models.Category{Id: models.UNDEFINED, Name: "Undefined"})
+	t.Storage.Categories().UpsertCategory(&models.Category{Name: "Work"})
+	t.Storage.Categories().UpsertCategory(&models.Category{Name: "Entertainment"})
+	t.Storage.Categories().UpsertCategory(&models.Category{Name: "Personal"})
+	t.Storage.Categories().UpsertCategory(&models.Category{Name: "Undefined"})
 
 	rules := make([]models.CategoryRule, 0)
 	rules = append(rules, models.CategoryRule{CategoryId: models.PERSONAL, AppName: constants.GOOGLE_CHROME})
@@ -68,9 +68,8 @@ func SeedData(t *TimeKeeper) {
 		Priority:          1,
 		Expression:        "twitch.tv"})
 
-	for idx, rule := range rules {
-		rule.RuleId = idx + 1
-		t.Storage.Rules().AddRule(rule)
+	for _, rule := range rules {
+		t.Storage.Rules().UpsertRule(&rule)
 	}
 
 	t.logger.Info("Data seeding completed.")

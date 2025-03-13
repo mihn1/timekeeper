@@ -23,7 +23,7 @@ func NewRuleStore(db *sql.DB, mu *sync.RWMutex, tableName string) *RuleStore {
 
 	_, err := store.db.Exec(`
         CREATE TABLE IF NOT EXISTS ` + tableName + ` (
-            rule_id INTEGER PRIMARY KEY,
+            rule_id INTEGER PRIMARY KEY AUTOINCREMENT,
             category_id TEXT NOT NULL,
             app_name TEXT NOT NULL,
             additional_data_key TEXT,
@@ -39,7 +39,7 @@ func NewRuleStore(db *sql.DB, mu *sync.RWMutex, tableName string) *RuleStore {
 	return store
 }
 
-func (s *RuleStore) GetRules() ([]models.CategoryRule, error) {
+func (s *RuleStore) GetRules() ([]*models.CategoryRule, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -49,9 +49,9 @@ func (s *RuleStore) GetRules() ([]models.CategoryRule, error) {
 	}
 	defer rows.Close()
 
-	var rules []models.CategoryRule
+	var rules []*models.CategoryRule
 	for rows.Next() {
-		var rule models.CategoryRule
+		rule := &models.CategoryRule{}
 		err = rows.Scan(&rule.RuleId, &rule.CategoryId, &rule.AppName, &rule.AdditionalDataKey, &rule.Expression, &rule.IsRegex, &rule.Priority)
 		if err != nil {
 			return nil, err
@@ -62,24 +62,24 @@ func (s *RuleStore) GetRules() ([]models.CategoryRule, error) {
 	return rules, nil
 }
 
-func (s *RuleStore) GetRule(ruleId int) (models.CategoryRule, error) {
+func (s *RuleStore) GetRule(ruleId int) (*models.CategoryRule, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	row := s.db.QueryRow("SELECT rule_id, category_id, app_name, additional_data_key, expression, is_regex, priority FROM "+s.tableName+" WHERE rule_id = ?", ruleId)
-	var rule models.CategoryRule
+	rule := &models.CategoryRule{}
 	err := row.Scan(&rule.RuleId, &rule.CategoryId, &rule.AppName, &rule.AdditionalDataKey, &rule.Expression, &rule.IsRegex, &rule.Priority)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return models.CategoryRule{}, fmt.Errorf("rule with id %d not found", ruleId)
+			return nil, fmt.Errorf("rule with id %d not found", ruleId)
 		}
-		return models.CategoryRule{}, err
+		return nil, err
 	}
 
 	return rule, nil
 }
 
-func (s *RuleStore) GetRulesByCategory(categoryId models.CategoryId) ([]models.CategoryRule, error) {
+func (s *RuleStore) GetRulesByCategory(categoryId models.CategoryId) ([]*models.CategoryRule, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -89,9 +89,9 @@ func (s *RuleStore) GetRulesByCategory(categoryId models.CategoryId) ([]models.C
 	}
 	defer rows.Close()
 
-	var rules []models.CategoryRule
+	var rules []*models.CategoryRule
 	for rows.Next() {
-		var rule models.CategoryRule
+		rule := &models.CategoryRule{}
 		err = rows.Scan(&rule.RuleId, &rule.CategoryId, &rule.AppName, &rule.AdditionalDataKey, &rule.Expression, &rule.IsRegex, &rule.Priority)
 		if err != nil {
 			return nil, err
@@ -102,7 +102,7 @@ func (s *RuleStore) GetRulesByCategory(categoryId models.CategoryId) ([]models.C
 	return rules, nil
 }
 
-func (s *RuleStore) GetRulesByApp(appName string) ([]models.CategoryRule, error) {
+func (s *RuleStore) GetRulesByApp(appName string) ([]*models.CategoryRule, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -112,9 +112,9 @@ func (s *RuleStore) GetRulesByApp(appName string) ([]models.CategoryRule, error)
 	}
 	defer rows.Close()
 
-	var rules []models.CategoryRule
+	var rules []*models.CategoryRule
 	for rows.Next() {
-		var rule models.CategoryRule
+		rule := &models.CategoryRule{}
 		err = rows.Scan(&rule.RuleId, &rule.CategoryId, &rule.AppName, &rule.AdditionalDataKey, &rule.Expression, &rule.IsRegex, &rule.Priority)
 		if err != nil {
 			return nil, err
@@ -125,12 +125,31 @@ func (s *RuleStore) GetRulesByApp(appName string) ([]models.CategoryRule, error)
 	return rules, nil
 }
 
-func (s *RuleStore) AddRule(rule models.CategoryRule) error {
+func (s *RuleStore) UpsertRule(rule *models.CategoryRule) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	_, err := s.db.Exec("INSERT INTO "+s.tableName+" (rule_id, category_id, app_name, additional_data_key, expression, is_regex, priority) VALUES (?, ?, ?, ?, ?, ?, ?)",
-		rule.RuleId, rule.CategoryId, rule.AppName, rule.AdditionalDataKey, rule.Expression, rule.IsRegex, rule.Priority)
+	var result sql.Result
+	var err error
+
+	if rule.RuleId == 0 {
+		// New record - let SQLite generate the ID
+		result, err = s.db.Exec("INSERT INTO "+s.tableName+" (category_id, app_name, additional_data_key, expression, is_regex, priority) VALUES (?, ?, ?, ?, ?, ?)",
+			rule.CategoryId, rule.AppName, rule.AdditionalDataKey, rule.Expression, rule.IsRegex, rule.Priority)
+
+		if err == nil {
+			// Get the last inserted ID and update the rule object
+			id, err := result.LastInsertId()
+			if err == nil {
+				rule.RuleId = int(id)
+			}
+		}
+	} else {
+		// Update existing record
+		_, err = s.db.Exec("UPDATE "+s.tableName+" SET category_id = ?, app_name = ?, additional_data_key = ?, expression = ?, is_regex = ?, priority = ? WHERE rule_id = ?",
+			rule.CategoryId, rule.AppName, rule.AdditionalDataKey, rule.Expression, rule.IsRegex, rule.Priority, rule.RuleId)
+	}
+
 	return err
 }
 
