@@ -34,7 +34,6 @@
     isLoading = true;
     try {
       categories = await GetCategories();
-      console.log('Categories:', categories);
     } catch (err) {
       console.error('Error loading categories:', err);
     } finally {
@@ -42,7 +41,7 @@
     }
   }
 
-  function confirmDelete(category) {
+  function confirmDelete(category: dtos.CategoryListItem) {
     categoryToDelete = category;
     showDeleteModal = true;
   }
@@ -183,7 +182,3 @@
     {/if}
   </div>
 </div>
-
-<svelte:head>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-</svelte:head>

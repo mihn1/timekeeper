@@ -7,7 +7,7 @@
   import CreateRuleModal from './CreateRuleModal.svelte';
   import CreateCategoryModal from '../categories/CreateCategoryModal.svelte';
   import { dtos } from '../../../wailsjs/go/models';
-  import type { Column } from '../../types/table'; // Import the shared type
+  import type { Column } from '../../types/table';
 
   let rules: dtos.RuleListItem[] = [];
   let categories: dtos.CategoryListItem[] = [];
@@ -22,6 +22,15 @@
   let selectedPageSize = 10;
   let isGroupedView = true;
 
+  // Reactive statement to force update when categories load
+  $: categoriesLoaded = !isLoadingCategories && categories.length > 0;
+  
+  // Force component update when categories finish loading
+  $: if (categoriesLoaded && rules.length > 0) {
+    // Force a refresh of the component
+    rules = [...rules];
+  }
+
   $: if ($refreshData) {
     loadRules();
   }
@@ -29,20 +38,25 @@
   $: filteredRules = rules
     .filter(rule => 
       rule.appName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      rule.expression.toLowerCase().includes(searchTerm.toLowerCase())
+      rule.expression.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      getCategoryName(rule.categoryId).toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => b.priority - a.priority); // Sort by priority (highest first)
 
   $: groupedRules = groupRulesByAppName(filteredRules);
 
   onMount(() => {
-    loadRules();
-    loadCategories();
+    // Load both in parallel for better performance
+    loadCategories(),
+    loadRules()
   });
 
   function getCategoryName(categoryId: number): string {
+    if (isLoadingCategories) return "Loading...";
+    
+    // Simple find operation - perfectly fine for small arrays
     const category = categories.find(c => c.id === categoryId);
-    return category ? category.name : '';
+    return category ? category.name : `Unknown (${categoryId})`;
   }
 
   async function loadRules() {
@@ -131,7 +145,12 @@
   }
 
   const tableColumns: Column[] = [
-    { key: 'categoryId', title: 'Category', sortable: true, formatter: (value) => getCategoryName(value) },
+    { 
+      key: 'categoryId', 
+      title: 'Category', 
+      sortable: true, 
+      formatter: (value) => getCategoryName(value)
+    },
     { key: 'appName', title: 'App Name', sortable: true },
     { key: 'additionalDataKey', title: 'Data Key', sortable: true },
     { key: 'expression', title: 'Expression', sortable: true },
@@ -276,7 +295,3 @@
     {/if}
   </div>
 </div>
-
-<svelte:head>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-</svelte:head>
