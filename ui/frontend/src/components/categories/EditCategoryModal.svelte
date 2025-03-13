@@ -82,12 +82,12 @@
       
       <div>
         <label for="category-description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-        <input 
+        <textarea 
           id="category-description"
-          type="text" 
           class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300" 
           bind:value={editedCategory.description}
-        />
+          rows="3"
+        ></textarea>
       </div>
     </div>
     

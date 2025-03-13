@@ -22,7 +22,7 @@
   $: endIndex = Math.min(startIndex + pageSize, data.length);
   $: paginatedData = noPagination ? data : data.slice(startIndex, endIndex);
   
-  $: sortedData = sortKey 
+  $: sortedData = sortKey !== null 
     ? [...paginatedData].sort((a, b) => {
         if (a[sortKey] < b[sortKey]) return sortDirection === 'asc' ? -1 : 1;
         if (a[sortKey] > b[sortKey]) return sortDirection === 'asc' ? 1 : -1;
@@ -42,7 +42,13 @@
     if (!column.sortable) return;
     
     if (sortKey === column.key) {
-      sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+      if (sortDirection === 'asc') {
+        sortDirection = 'desc';
+      } else {
+        // Reset sorting when clicked a third time
+        sortKey = null;
+        sortDirection = 'asc';
+      }
     } else {
       sortKey = column.key;
       sortDirection = 'asc';

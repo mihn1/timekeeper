@@ -75,16 +75,13 @@
       </div>
       
       <div>
-        <label for="category-description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-        <input 
-          id="category-description"
-          type="text" 
-          class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 {formErrors.Description ? 'border-red-500' : 'border-gray-300'}" 
+        <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <textarea 
+          id="description"
+          class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300" 
           bind:value={newCategory.description}
-        />
-        {#if formErrors.Description}
-          <p class="text-red-500 text-xs mt-1">{formErrors.Description}</p>
-        {/if}
+          rows="3"
+        ></textarea>
       </div>
     </div>
     
