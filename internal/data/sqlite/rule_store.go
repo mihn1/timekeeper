@@ -106,7 +106,7 @@ func (s *RuleStore) GetRulesByApp(appName string) ([]*models.CategoryRule, error
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	rows, err := s.db.Query("SELECT rule_id, category_id, app_name, additional_data_key, expression, is_regex, priority FROM "+s.tableName+" WHERE app_name = ?", appName)
+	rows, err := s.db.Query("SELECT rule_id, category_id, app_name, additional_data_key, expression, is_regex, priority FROM "+s.tableName+" WHERE app_name = ? COLLATE NOCASE", appName)
 	if err != nil {
 		return nil, err
 	}
