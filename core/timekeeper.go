@@ -2,12 +2,10 @@ package core
 
 import (
 	"database/sql"
-	"fmt"
 	"log/slog"
 	"os"
 	"slices"
 
-	"github.com/labstack/gommon/log"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mihn1/timekeeper/constants"
 	"github.com/mihn1/timekeeper/core/resolvers"
@@ -198,6 +196,11 @@ func (t *TimeKeeper) aggregateNewEvent(event *models.AppSwitchEvent) {
 
 	rules, err := t.getRulesForEvent(t.curAppEvent)
 	if err != nil {
+		if _, ok := err.(*EventExcludedError); ok {
+			t.logger.Info("Event excluded", "by", err.Error())
+			return
+		}
+
 		t.logger.Error("Error getting rules for event", "error", err)
 		return
 	}
@@ -251,15 +254,17 @@ func (t *TimeKeeper) getRulesForEvent(event *models.AppSwitchEvent) ([]*models.C
 		return nil, err
 	}
 
-	if isEventExcluded(event, rules) {
-		return nil, fmt.Errorf("event excluded")
+	logInfoWhenExcluded := true // TODO: make this configurable
+
+	if excluded, rule := isEventExcluded(event, rules); excluded {
+		return nil, NewEventExcludedError(event.AppName, rule, "Event matched exlusion rule", logInfoWhenExcluded)
 	}
 
 	// Get rules that are applied to all apps
 	globalRules, err := t.Storage.Rules().GetRulesByApp(constants.ALL_APPS)
 	if err == nil {
-		if isEventExcluded(event, globalRules) {
-			return nil, fmt.Errorf("event excluded")
+		if excluded, rule := isEventExcluded(event, globalRules); excluded {
+			return nil, NewEventExcludedError(event.AppName, rule, "Event matched global exlusion rule", logInfoWhenExcluded)
 		}
 	}
 
@@ -284,13 +289,12 @@ func isSameEvent(e1, e2 *models.AppSwitchEvent) bool {
 	return e1.StartTime.Sub(e2.StartTime).Seconds() <= 60
 }
 
-func isEventExcluded(event *models.AppSwitchEvent, rules []*models.CategoryRule) bool {
+func isEventExcluded(event *models.AppSwitchEvent, rules []*models.CategoryRule) (excluded bool, rule *models.CategoryRule) {
 	for _, rule := range rules {
 		if !rule.IsExclusion {
 			continue
 		}
 
-		log.Printf("[DEBUG] Checking exclusion rule: %v", rule)
 		match, err := rule.IsMatch(event)
 		if err != nil {
 			// we want to keep checking other rules here if there is an error
@@ -298,9 +302,9 @@ func isEventExcluded(event *models.AppSwitchEvent, rules []*models.CategoryRule)
 		}
 
 		if match {
-			return true
+			return true, rule
 		}
 	}
 
-	return false
+	return false, nil
 }
