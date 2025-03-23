@@ -21,7 +21,8 @@
     additionalDataKey: '', 
     expression: '', 
     isRegex: false, 
-    priority: 0 
+    priority: 0,
+    isExclusion: false
   };
   
   let formErrors: FormErrors = {};
@@ -62,7 +63,8 @@
       additionalDataKey: '', 
       expression: '', 
       isRegex: false, 
-      priority: 0 
+      priority: 0,
+      isExclusion: false
     };
     formErrors = {};
   }
@@ -140,6 +142,13 @@
         <label class="inline-flex items-center mt-4">
           <input type="checkbox" class="form-checkbox h-5 w-5 text-blue-600" bind:checked={newRule.isRegex} />
           <span class="ml-2 text-sm text-gray-700">Is Regex</span>
+        </label>
+      </div>
+      
+      <div class="flex items-center">
+        <label class="inline-flex items-center mt-4">
+          <input type="checkbox" class="form-checkbox h-5 w-5 text-blue-600" bind:checked={newRule.isExclusion} />
+          <span class="ml-2 text-sm text-gray-700">Is Exclusion</span>
         </label>
       </div>
     </div>

@@ -29,7 +29,7 @@
   $: categoriesLoaded = !isLoadingCategories && categories.length > 0;
   
   // Force component update when categories finish loading
-  $: if (categoriesLoaded && rules.length > 0) {
+  $: if (categoriesLoaded && rules?.length > 0) {
     // Force a refresh of the component
     rules = [...rules];
   }
@@ -38,13 +38,13 @@
     loadRules();
   }
 
-  $: filteredRules = rules
-    .filter(rule => 
-      rule.appName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      rule.expression.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getCategoryName(rule.categoryId).toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => b.priority - a.priority); // Sort by priority (highest first)
+  $: filteredRules = rules?.filter(rule => 
+        rule.appName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        rule.expression.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        getCategoryName(rule.categoryId).toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .sort((a, b) => b.priority - a.priority)
+    ?? [];
 
   $: groupedRules = groupRulesByAppName(filteredRules);
 
@@ -169,6 +169,7 @@
     { key: 'additionalDataKey', title: 'Data Key', sortable: true },
     { key: 'expression', title: 'Expression', sortable: true },
     { key: 'isRegex', title: 'Regex', sortable: true, formatter: (value) => value ? 'Yes' : 'No' },
+    { key: 'isExclusion', title: 'Exclusion', sortable: true, formatter: (value) => value ? 'Yes' : 'No' },
     { key: 'priority', title: 'Priority', sortable: true },
   ];
 

@@ -2,10 +2,14 @@ package core
 
 import (
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"os"
+	"slices"
 
+	"github.com/labstack/gommon/log"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/mihn1/timekeeper/constants"
 	"github.com/mihn1/timekeeper/core/resolvers"
 	"github.com/mihn1/timekeeper/datatypes"
 	"github.com/mihn1/timekeeper/internal/data/inmem"
@@ -192,13 +196,19 @@ func (t *TimeKeeper) handleEvent(event *models.AppSwitchEvent) {
 func (t *TimeKeeper) aggregateNewEvent(event *models.AppSwitchEvent) {
 	elapsedTime := event.StartTime.Sub(t.curAppEvent.StartTime).Milliseconds()
 
-	_, err := t.Storage.AppAggregations().AggregateAppEvent(t.curAppEvent, elapsedTime)
+	rules, err := t.getRulesForEvent(t.curAppEvent)
+	if err != nil {
+		t.logger.Error("Error getting rules for event", "error", err)
+		return
+	}
+
+	_, err = t.Storage.AppAggregations().AggregateAppEvent(t.curAppEvent, elapsedTime)
 	if err != nil {
 		t.logger.Error("Error aggregating app event", "app", event.AppName, "error", err)
 		return
 	}
 
-	catId, err := t.aggregateCategory(t.curAppEvent, elapsedTime) // Call after aggregateEvent
+	catId, err := t.aggregateCategory(t.curAppEvent, elapsedTime, rules) // Call after aggregateEvent
 	if err != nil {
 		t.logger.Error("Error aggregating category", "app", event.AppName, "error", err)
 		return
@@ -207,10 +217,15 @@ func (t *TimeKeeper) aggregateNewEvent(event *models.AppSwitchEvent) {
 	t.curAppEvent.CategoryId = catId
 }
 
-func (t *TimeKeeper) aggregateCategory(event *models.AppSwitchEvent, elapsedTime int64) (models.CategoryId, error) {
-	catId, err := defaultResolver.ResolveCategory(event)
+func (t *TimeKeeper) aggregateCategory(event *models.AppSwitchEvent, elapsedTime int64, rules []*models.CategoryRule) (models.CategoryId, error) {
+	catId, err := defaultResolver.ResolveCategory(event, rules)
 	if err != nil {
 		return catId, err
+	}
+
+	if catId == models.EXCLUDED {
+		t.logger.Info("Category excluded", "event", event)
+		return catId, nil
 	}
 
 	cat, err := t.Storage.Categories().GetCategory(catId)
@@ -230,6 +245,30 @@ func (t *TimeKeeper) aggregateCategory(event *models.AppSwitchEvent, elapsedTime
 	return catId, nil
 }
 
+func (t *TimeKeeper) getRulesForEvent(event *models.AppSwitchEvent) ([]*models.CategoryRule, error) {
+	rules, err := t.Storage.Rules().GetRulesByApp(event.AppName)
+	if err != nil {
+		return nil, err
+	}
+
+	if isEventExcluded(event, rules) {
+		return nil, fmt.Errorf("event excluded")
+	}
+
+	// Get rules that are applied to all apps
+	globalRules, err := t.Storage.Rules().GetRulesByApp(constants.ALL_APPS)
+	if err == nil {
+		if isEventExcluded(event, globalRules) {
+			return nil, fmt.Errorf("event excluded")
+		}
+	}
+
+	rules = append(rules, globalRules...)
+	slices.SortStableFunc(globalRules, models.CmpRules)
+
+	return rules, nil
+}
+
 func isSameEvent(e1, e2 *models.AppSwitchEvent) bool {
 	if e1.AppName != e2.AppName {
 		return false
@@ -243,4 +282,25 @@ func isSameEvent(e1, e2 *models.AppSwitchEvent) bool {
 
 	// If the events are within 60 seconds of each other, consider them the same event
 	return e1.StartTime.Sub(e2.StartTime).Seconds() <= 60
+}
+
+func isEventExcluded(event *models.AppSwitchEvent, rules []*models.CategoryRule) bool {
+	for _, rule := range rules {
+		if !rule.IsExclusion {
+			continue
+		}
+
+		log.Printf("[DEBUG] Checking exclusion rule: %v", rule)
+		match, err := rule.IsMatch(event)
+		if err != nil {
+			// we want to keep checking other rules here if there is an error
+			continue
+		}
+
+		if match {
+			return true
+		}
+	}
+
+	return false
 }

@@ -13,6 +13,7 @@ type CategoryRule struct {
 	Expression        string
 	IsRegex           bool
 	Priority          int
+	IsExclusion       bool
 }
 
 func (r *CategoryRule) IsMatch(event *AppSwitchEvent) (bool, error) {

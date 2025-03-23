@@ -12,6 +12,7 @@ type RuleListItem struct {
 	Expression        string `json:"expression"`
 	IsRegex           bool   `json:"isRegex"`
 	Priority          int    `json:"priority"`
+	IsExclusion       bool   `json:"isExclusion"`
 }
 
 type RuleDetail struct {
@@ -22,6 +23,7 @@ type RuleDetail struct {
 	Expression        string `json:"expression"`
 	IsRegex           bool   `json:"isRegex"`
 	Priority          int    `json:"priority"`
+	IsExclusion       bool   `json:"isExclusion"`
 }
 
 type RuleCreate struct {
@@ -31,6 +33,7 @@ type RuleCreate struct {
 	Expression        string `json:"expression"`
 	IsRegex           bool   `json:"isRegex"`
 	Priority          int    `json:"priority"`
+	IsExclusion       bool   `json:"isExclusion"`
 }
 
 type RuleUpdate struct {
@@ -41,6 +44,7 @@ type RuleUpdate struct {
 	Expression        string `json:"expression"`
 	IsRegex           bool   `json:"isRegex"`
 	Priority          int    `json:"priority"`
+	IsExclusion       bool   `json:"isExclusion"`
 }
 
 func (rc *RuleCreate) ToModel() *models.CategoryRule {
@@ -51,6 +55,7 @@ func (rc *RuleCreate) ToModel() *models.CategoryRule {
 		Expression:        rc.Expression,
 		IsRegex:           rc.IsRegex,
 		Priority:          rc.Priority,
+		IsExclusion:       rc.IsExclusion,
 	}
 }
 
@@ -63,6 +68,7 @@ func (ru *RuleUpdate) ToModel() *models.CategoryRule {
 		Expression:        ru.Expression,
 		IsRegex:           ru.IsRegex,
 		Priority:          ru.Priority,
+		IsExclusion:       ru.IsExclusion,
 	}
 }
 
@@ -75,6 +81,7 @@ func RuleDetailFromModel(rule *models.CategoryRule) *RuleDetail {
 		Expression:        rule.Expression,
 		IsRegex:           rule.IsRegex,
 		Priority:          rule.Priority,
+		IsExclusion:       rule.IsExclusion,
 	}
 }
 
@@ -89,6 +96,7 @@ func RuleListFromModels(rules []*models.CategoryRule) []*RuleListItem {
 			IsRegex:           rule.IsRegex,
 			AdditionalDataKey: rule.AdditionalDataKey,
 			Priority:          rule.Priority,
+			IsExclusion:       rule.IsExclusion,
 		}
 	}
 	return result

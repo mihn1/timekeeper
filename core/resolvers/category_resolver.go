@@ -6,5 +6,5 @@ import (
 
 // resolve category from an app switch event
 type CategoryResolver interface {
-	ResolveCategory(event *models.AppSwitchEvent) (models.CategoryId, error)
+	ResolveCategory(event *models.AppSwitchEvent, rules []*models.CategoryRule) (models.CategoryId, error)
 }

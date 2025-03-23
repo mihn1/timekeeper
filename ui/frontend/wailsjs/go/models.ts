@@ -86,6 +86,7 @@ export namespace dtos {
 	    expression: string;
 	    isRegex: boolean;
 	    priority: number;
+	    isExclusion: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new RuleCreate(source);
@@ -99,6 +100,7 @@ export namespace dtos {
 	        this.expression = source["expression"];
 	        this.isRegex = source["isRegex"];
 	        this.priority = source["priority"];
+	        this.isExclusion = source["isExclusion"];
 	    }
 	}
 	export class RuleDetail {
@@ -109,6 +111,7 @@ export namespace dtos {
 	    expression: string;
 	    isRegex: boolean;
 	    priority: number;
+	    isExclusion: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new RuleDetail(source);
@@ -123,6 +126,7 @@ export namespace dtos {
 	        this.expression = source["expression"];
 	        this.isRegex = source["isRegex"];
 	        this.priority = source["priority"];
+	        this.isExclusion = source["isExclusion"];
 	    }
 	}
 	export class RuleListItem {
@@ -133,6 +137,7 @@ export namespace dtos {
 	    expression: string;
 	    isRegex: boolean;
 	    priority: number;
+	    isExclusion: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new RuleListItem(source);
@@ -147,6 +152,7 @@ export namespace dtos {
 	        this.expression = source["expression"];
 	        this.isRegex = source["isRegex"];
 	        this.priority = source["priority"];
+	        this.isExclusion = source["isExclusion"];
 	    }
 	}
 	export class RuleUpdate {
@@ -157,6 +163,7 @@ export namespace dtos {
 	    expression: string;
 	    isRegex: boolean;
 	    priority: number;
+	    isExclusion: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new RuleUpdate(source);
@@ -171,6 +178,7 @@ export namespace dtos {
 	        this.expression = source["expression"];
 	        this.isRegex = source["isRegex"];
 	        this.priority = source["priority"];
+	        this.isExclusion = source["isExclusion"];
 	    }
 	}
 

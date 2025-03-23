@@ -53,6 +53,7 @@ func (a *App) UpdateRule(ruleId int, ruledtos *dtos.RuleUpdate) error {
 	existingRule.Expression = ruledtos.Expression
 	existingRule.IsRegex = ruledtos.IsRegex
 	existingRule.Priority = ruledtos.Priority
+	existingRule.IsExclusion = ruledtos.IsExclusion
 
 	// Save the updated rule
 	err = a.timekeeper.Storage.Rules().UpsertRule(existingRule)

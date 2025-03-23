@@ -2,12 +2,10 @@ module github.com/mihn1/timekeeper
 
 go 1.23.5
 
-require (
-	github.com/progrium/darwinkit v0.5.0
-	golang.org/x/exp v0.0.0-20250207012021-f9890c6ad9f3
-)
+require github.com/progrium/darwinkit v0.5.0
 
 require (
+	github.com/labstack/gommon v0.4.2
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/stretchr/testify v1.10.0
 	github.com/wailsapp/wails/v2 v2.10.1
@@ -21,7 +19,6 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/jchv/go-winloader v0.0.0-20210711035445-715c2860da7e // indirect
 	github.com/labstack/echo/v4 v4.13.3 // indirect
-	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/leaanthony/go-ansi-parser v1.6.1 // indirect
 	github.com/leaanthony/gosod v1.0.4 // indirect
 	github.com/leaanthony/slicer v1.6.0 // indirect

@@ -16,30 +16,47 @@
     [key: string]: string;
   };
 
-  let editedRule: dtos.RuleUpdate = null;
+  // Initialize with default empty values to prevent null reference errors
+  let editedRule: dtos.RuleUpdate = {
+    id: 0,
+    categoryId: 0,
+    appName: '',
+    additionalDataKey: '',
+    expression: '',
+    isRegex: false,
+    priority: 0,
+    isExclusion: false
+  };
 
   let formErrors: FormErrors = {};
-  let initialized = false;
   
-  // Use a watcher for show and rule props, but only initialize once
-  $: if (show && rule && !initialized) {
-    editedRule = {
-      id: rule.id || 0,
-      categoryId: rule.categoryId,
-      appName: rule.appName || "",
-      additionalDataKey: rule.additionalDataKey || "",
-      expression: rule.expression || "",
-      isRegex: rule.isRegex || false,
-      priority: rule.priority || 0,
-    };
-    formErrors = {}; // Reset form errors when opening modal
-    initialized = true;
+  // Better reactive approach: re-initialize only when the rule ID changes
+  let previousRuleId = null;
+
+  $: if (show && rule) {
+    // Only initialize form when a different rule is selected or modal is first opened
+    if (rule.id !== previousRuleId) {      
+      // Make sure all properties are properly copied
+      editedRule = {
+        id: rule.id || 0,
+        categoryId: rule.categoryId,
+        appName: rule.appName || "",
+        additionalDataKey: rule.additionalDataKey || "",
+        expression: rule.expression || "",
+        isRegex: rule.isRegex || false,
+        priority: rule.priority || 0,
+        // Ensure isExclusion is properly copied from the rule
+        isExclusion: rule.isExclusion === true, // Use === true to handle undefined
+      };
+      
+      formErrors = {}; // Reset form errors
+      previousRuleId = rule.id;
+    }
   }
   
-  // Reset the initialization flag when the modal is closed
+  // Reset when modal is closed
   $: if (!show) {
-    editedRule = null;
-    initialized = false;
+    previousRuleId = null;
   }
 
   function validateForm() {
@@ -166,6 +183,17 @@
             bind:checked={editedRule.isRegex}
           />
           <span class="ml-2 text-sm text-gray-700">Is Regex</span>
+        </label>
+      </div>
+
+      <div class="flex items-center">
+        <label class="inline-flex items-center mt-4">
+          <input
+            type="checkbox"
+            class="form-checkbox h-5 w-5 text-blue-600"
+            bind:checked={editedRule.isExclusion}
+          />
+          <span class="ml-2 text-sm text-gray-700">Is Exclusion</span>
         </label>
       </div>
     </div>

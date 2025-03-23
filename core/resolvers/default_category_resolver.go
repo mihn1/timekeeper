@@ -1,10 +1,8 @@
 package resolvers
 
 import (
-	"github.com/mihn1/timekeeper/constants"
 	"github.com/mihn1/timekeeper/internal/data/interfaces"
 	"github.com/mihn1/timekeeper/internal/models"
-	"golang.org/x/exp/slices"
 )
 
 type DefaultCategoryResolver struct {
@@ -19,20 +17,7 @@ func NewDefaultCategoryResolver(ruleStore interfaces.RuleStore, categoryStore in
 	}
 }
 
-func (r *DefaultCategoryResolver) ResolveCategory(event *models.AppSwitchEvent) (models.CategoryId, error) {
-	rules, err := r.RuleStore.GetRulesByApp(event.AppName)
-	if err != nil {
-		return models.UNDEFINED, err
-	}
-
-	// Get rules that are applied to all apps
-	globalRules, err := r.RuleStore.GetRulesByApp(constants.ALL_APPS)
-	if err == nil {
-		rules = append(rules, globalRules...)
-	}
-
-	slices.SortStableFunc(rules, models.CmpRules)
-
+func (r *DefaultCategoryResolver) ResolveCategory(event *models.AppSwitchEvent, rules []*models.CategoryRule) (models.CategoryId, error) {
 	// iterate through the rules to find the first match
 	for _, rule := range rules {
 		match, err := rule.IsMatch(event)
