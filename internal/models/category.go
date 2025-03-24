@@ -1,17 +1,17 @@
 package models
 
-type CategoryId string
+type CategoryId int
 
 const (
-	WORK          CategoryId = "work"
-	ENTERTAINMENT CategoryId = "entertainment"
-	PERSONAL      CategoryId = "personal"
-	UNDEFINED     CategoryId = "undefined"
+	EXCLUDED      CategoryId = 0
+	WORK          CategoryId = 1
+	ENTERTAINMENT CategoryId = 2
+	PERSONAL      CategoryId = 3
+	UNDEFINED     CategoryId = 4
 )
 
 type Category struct {
-	Id             CategoryId
-	Name           string
-	Description    string
-	CategoryTypeId int
+	Id          CategoryId
+	Name        string
+	Description string
 }

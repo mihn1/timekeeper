@@ -3,7 +3,7 @@ package models
 import (
 	"fmt"
 
-	"github.com/mihn1/timekeeper/internal/datatypes"
+	"github.com/mihn1/timekeeper/datatypes"
 	"github.com/mihn1/timekeeper/utils"
 )
 
@@ -14,9 +14,9 @@ type CategoryAggregation struct {
 }
 
 func GetCategoryAggregationKey(categoryId CategoryId, date datatypes.DateOnly) string {
-	return string(categoryId) + "-" + date.String()
+	return fmt.Sprintf("%v-%s", categoryId, date)
 }
 
 func (c *CategoryAggregation) String() string {
-	return fmt.Sprintf("%s: %s", c.CategoryId, utils.FormatTimeElapsed(c.TimeElapsed))
+	return fmt.Sprintf("%v: %s", c.CategoryId, utils.FormatTimeElapsed(c.TimeElapsed))
 }

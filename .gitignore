@@ -26,3 +26,9 @@ go.work.sum
 
 *.db*
 db/*
+
+# wails gitignore
+ui/build/bin
+ui/frontend/node_modules
+ui/frontend/dist
+ui/node_modules

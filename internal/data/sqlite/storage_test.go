@@ -19,7 +19,7 @@ func TestSqliteStorage(t *testing.T) {
 	storage := NewSqliteStorage(db)
 
 	// Test adding and retrieving categories
-	err = storage.Categories().AddCategory(models.Category{
+	err = storage.Categories().UpsertCategory(&models.Category{
 		Id:   models.WORK,
 		Name: "Work",
 	})
@@ -30,13 +30,13 @@ func TestSqliteStorage(t *testing.T) {
 	assert.Equal(t, "Work", cat.Name)
 
 	// Test rule storage
-	rule := models.CategoryRule{
+	rule := &models.CategoryRule{
 		RuleId:     1,
 		CategoryId: models.WORK,
 		AppName:    "Code",
 	}
 
-	err = storage.Rules().AddRule(rule)
+	err = storage.Rules().UpsertRule(rule)
 	assert.NoError(t, err)
 
 	rules, err := storage.Rules().GetRules()

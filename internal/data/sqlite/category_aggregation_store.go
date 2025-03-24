@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"sync"
 
-	"github.com/mihn1/timekeeper/internal/datatypes"
+	"github.com/mihn1/timekeeper/datatypes"
 	"github.com/mihn1/timekeeper/internal/models"
 )
 
@@ -36,7 +36,7 @@ func NewCategoryAggregationStore(db *sql.DB, mu *sync.RWMutex, tableName string)
 	return s
 }
 
-func (s *CategoryAggregations) AggregateCategory(cat models.Category, date datatypes.DateOnly, elapsedTime int64) (*models.CategoryAggregation, error) {
+func (s *CategoryAggregations) AggregateCategory(cat *models.Category, date datatypes.DateOnly, elapsedTime int64) (*models.CategoryAggregation, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -113,7 +113,7 @@ func (s *CategoryAggregations) GetCategoryAggregationsByDate(date datatypes.Date
 		return nil, err
 	}
 
-	var aggregations []*models.CategoryAggregation
+	var aggregations []*models.CategoryAggregation = make([]*models.CategoryAggregation, 0)
 	for rows.Next() {
 		aggregation := &models.CategoryAggregation{}
 		err = rows.Scan(&aggregation.CategoryId, &aggregation.Date, &aggregation.TimeElapsed)

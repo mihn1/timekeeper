@@ -1,7 +1,7 @@
 package inmem
 
 import (
-	"github.com/mihn1/timekeeper/internal/datatypes"
+	"github.com/mihn1/timekeeper/datatypes"
 	"github.com/mihn1/timekeeper/internal/models"
 	"github.com/mihn1/timekeeper/utils"
 )
@@ -16,7 +16,7 @@ func NewCategoryAggregationStore() *CategoryAggregationStore {
 	}
 }
 
-func (store *CategoryAggregationStore) AggregateCategory(cat models.Category, date datatypes.DateOnly, elapsedTime int64) (*models.CategoryAggregation, error) {
+func (store *CategoryAggregationStore) AggregateCategory(cat *models.Category, date datatypes.DateOnly, elapsedTime int64) (*models.CategoryAggregation, error) {
 	key := models.GetCategoryAggregationKey(cat.Id, date)
 	aggr, ok := store.Aggregations[key]
 

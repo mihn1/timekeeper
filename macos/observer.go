@@ -2,11 +2,11 @@ package macos
 
 import (
 	"log"
+	"log/slog"
 	"sync"
 	"time"
 
-	"github.com/mihn1/timekeeper/internal/constants"
-	"github.com/mihn1/timekeeper/internal/core"
+	"github.com/mihn1/timekeeper/constants"
 	"github.com/mihn1/timekeeper/internal/models"
 	"github.com/mihn1/timekeeper/macos/browsers"
 	"github.com/progrium/darwinkit/macos"
@@ -15,16 +15,20 @@ import (
 )
 
 type Observer struct {
-	timekeeper       *core.TimeKeeper
 	browserListeners map[string]bool
 	mu               sync.Mutex
+	callback         func(models.AppSwitchEvent)
+	logger           *slog.Logger
+	isStandalone     bool
 }
 
-func NewObserver(t *core.TimeKeeper) *Observer {
+func NewObserver(callback func(models.AppSwitchEvent), isStandalone bool, logger *slog.Logger) *Observer {
 	return &Observer{
-		timekeeper:       t,
 		browserListeners: make(map[string]bool),
 		mu:               sync.Mutex{},
+		callback:         callback,
+		logger:           logger,
+		isStandalone:     isStandalone,
 	}
 }
 
@@ -32,44 +36,64 @@ var (
 	applicationKey foundation.String = foundation.String_StringWithString("NSWorkspaceApplicationKey")
 )
 
-func (o *Observer) StartObserving() error {
+func (o *Observer) Start() error {
+	o.logger.Info("Starting MACOS browsers observer")
+
+	if !o.isStandalone {
+		return o.startListenerInternal()
+	}
+
+	var err error
 	macos.RunApp(func(app appkit.Application, delegate *appkit.ApplicationDelegate) {
-		log.Println("Starting observers")
-
-		ws := appkit.Workspace_SharedWorkspace()
-		notificationCenter := ws.NotificationCenter()
-
-		// Register for launching a new app
-		notificationCenter.AddObserverForNameObjectQueueUsingBlock(
-			"NSWorkspaceDidLaunchApplicationNotification",
-			nil,
-			foundation.OperationQueue_MainQueue(),
-			func(notification foundation.Notification) {
-				event, pid := getEvent(notification)
-				o.registerBrowserObserver(pid, event.AppName)
-			})
-
-		// Register for activating an app
-		notificationCenter.AddObserverForNameObjectQueueUsingBlock(
-			"NSWorkspaceDidActivateApplicationNotification",
-			nil,
-			foundation.OperationQueue_MainQueue(),
-			func(notification foundation.Notification) {
-				event, pid := getEvent(notification)
-				o.registerBrowserObserver(pid, event.AppName)
-				o.timekeeper.PushEvent(event) // Push event to timekeeper in case of app activation
-			})
-
-		// Register for terminating an app
-		notificationCenter.AddObserverForNameObjectQueueUsingBlock(
-			"NSWorkspaceDidTerminateApplicationNotification",
-			nil,
-			foundation.OperationQueue_MainQueue(),
-			func(notification foundation.Notification) {
-				event, _ := getEvent(notification)
-				o.stopBrowserObserver(event.AppName)
-			})
+		err = o.startListenerInternal()
 	})
+
+	return err
+}
+
+func (o *Observer) startListenerInternal() error {
+	ws := appkit.Workspace_SharedWorkspace()
+	notificationCenter := ws.NotificationCenter()
+
+	// Register for launching a new app
+	notificationCenter.AddObserverForNameObjectQueueUsingBlock(
+		"NSWorkspaceDidLaunchApplicationNotification",
+		nil,
+		foundation.OperationQueue_MainQueue(),
+		func(notification foundation.Notification) {
+			event, pid := getEvent(notification)
+			o.registerBrowserObserver(pid, event.AppName, o.callback)
+		})
+
+	// Register for activating an app
+	notificationCenter.AddObserverForNameObjectQueueUsingBlock(
+		"NSWorkspaceDidActivateApplicationNotification",
+		nil,
+		foundation.OperationQueue_MainQueue(),
+		func(notification foundation.Notification) {
+			event, pid := getEvent(notification)
+			o.registerBrowserObserver(pid, event.AppName, o.callback)
+			o.callback(event) // Push event to timekeeper in case of app activation
+		})
+
+	// Register for terminating an app
+	notificationCenter.AddObserverForNameObjectQueueUsingBlock(
+		"NSWorkspaceDidTerminateApplicationNotification",
+		nil,
+		foundation.OperationQueue_MainQueue(),
+		func(notification foundation.Notification) {
+			event, _ := getEvent(notification)
+			o.stopBrowserObserver(event.AppName)
+		})
+
+	return nil
+}
+
+func (o *Observer) Stop() error {
+	o.logger.Info("Stopping MACOS browsers observer")
+	for browserName := range o.browserListeners {
+		o.stopBrowserObserver(browserName)
+	}
 
 	return nil
 }
@@ -89,7 +113,7 @@ func getEvent(notification foundation.Notification) (models.AppSwitchEvent, int)
 	return event, int(runningApp.ProcessIdentifier())
 }
 
-func (o *Observer) registerBrowserObserver(pid int, browserName string) {
+func (o *Observer) registerBrowserObserver(pid int, browserName string, callback func(models.AppSwitchEvent)) {
 	switch browserName {
 	case constants.BRAVE, constants.GOOGLE_CHROME, constants.SAFARI:
 		o.mu.Lock()
@@ -97,7 +121,7 @@ func (o *Observer) registerBrowserObserver(pid int, browserName string) {
 
 		if val, ok := o.browserListeners[browserName]; !ok || !val {
 			log.Printf("Registering browser observer for %v", browserName)
-			success := browsers.StartTabObserver(pid, browserName, o.timekeeper)
+			success := browsers.StartTabObserver(pid, browserName, callback)
 			if !success {
 				log.Printf("Failed to start observer for %v", browserName)
 				return

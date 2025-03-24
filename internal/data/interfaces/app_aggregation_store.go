@@ -1,7 +1,7 @@
 package interfaces
 
 import (
-	"github.com/mihn1/timekeeper/internal/datatypes"
+	"github.com/mihn1/timekeeper/datatypes"
 	"github.com/mihn1/timekeeper/internal/models"
 )
 

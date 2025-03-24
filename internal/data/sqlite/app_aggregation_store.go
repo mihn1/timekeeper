@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"sync"
 
-	"github.com/mihn1/timekeeper/internal/datatypes"
+	"github.com/mihn1/timekeeper/datatypes"
 	"github.com/mihn1/timekeeper/internal/models"
 )
 
@@ -104,7 +104,7 @@ func (s *AppAggregationStore) GetAppAggregationsByDate(date datatypes.DateOnly) 
 	}
 	defer rows.Close()
 
-	var aggregations []*models.AppAggregation
+	var aggregations []*models.AppAggregation = make([]*models.AppAggregation, 0)
 	for rows.Next() {
 		var appAggr models.AppAggregation
 		err = rows.Scan(&appAggr.AppName, &appAggr.Date, &appAggr.TimeElapsed, &appAggr.AdditionalData)
