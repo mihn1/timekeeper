@@ -9,5 +9,8 @@
   "author": {
     "name": "Mihn1",
     "email": "am141198@gmail.com"
+  },
+  "info": {
+    "iconFile": "build/appicon.png"
   }
 }
