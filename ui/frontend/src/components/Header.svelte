@@ -4,7 +4,7 @@
 
 <header>
   <div class="logo">
-    <img src="/logo-universal.png" alt="TimeKeeper Logo" />
+    <img src="/logo.png" alt="TimeKeeper Logo" />
     <h1>TimeKeeper</h1>
   </div>
   
