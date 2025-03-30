@@ -19,7 +19,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 1rem 1.5rem;
-    background-color: #ffffff;
+    background-color: var(--card-bg-color);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
 
@@ -37,7 +37,7 @@
   h1 {
     font-size: 1.5rem;
     font-weight: 600;
-    color: #333;
+    color: var(--text-color);
     margin: 0;
   }
 
@@ -45,12 +45,12 @@
     font-size: 0.9rem;
     padding: 0.35rem 0.75rem;
     border-radius: 1rem;
-    background-color: #f0f0f0;
-    color: #777;
+    background-color: var(--button-bg-color);
+    color: var(--secondary-color);
   }
 
   .status.active {
-    background-color: #E6F4EA;
-    color: #1E8E3E;
+    background-color: var(--success-color);
+    color: white;
   }
 </style>

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { Doughnut } from 'svelte-chartjs';
   import { formatTimeElapsed } from '../utils/formatters';
+  import { theme } from '../stores/theme';
   
   import {
     Chart as ChartJS,
@@ -26,6 +27,10 @@
     labels: [],
     datasets: []
   };
+  
+  let isDarkMode;
+  
+  $: isDarkMode = $theme === 'dark';
   
   $: if (data) {
     prepareChartData();
@@ -83,7 +88,7 @@
     return colors.slice(0, count);
   }
   
-  const chartOptions = {
+  $: chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -94,7 +99,8 @@
           padding: 15,
           font: {
             size: 12
-          }
+          },
+          color: isDarkMode ? '#f0f0f0' : '#333333'
         }
       },
       tooltip: {
@@ -105,7 +111,12 @@
             const mins = Math.floor(value % 60);
             return `${context.label}: ${hours}h ${mins}m`;
           }
-        }
+        },
+        backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+        titleColor: isDarkMode ? '#f0f0f0' : '#333333',
+        bodyColor: isDarkMode ? '#f0f0f0' : '#333333',
+        borderColor: isDarkMode ? '#444444' : '#e0e0e0',
+        borderWidth: 1
       }
     }
   };
@@ -123,6 +134,9 @@
   .chart-wrapper {
     height: 300px;
     position: relative;
+    background-color: var(--card-bg-color);
+    border-radius: 4px;
+    padding: 1rem;
   }
   
   .no-data {
@@ -130,7 +144,7 @@
     justify-content: center;
     align-items: center;
     height: 100%;
-    color: #777;
+    color: var(--secondary-color);
     font-style: italic;
   }
 </style>

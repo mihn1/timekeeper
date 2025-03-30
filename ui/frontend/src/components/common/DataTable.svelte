@@ -67,13 +67,13 @@
 
 <div class="overflow-hidden">
   <div class="overflow-x-auto">
-    <table class="min-w-full divide-y divide-gray-200">
+    <table class="min-w-full divide-y data-table">
       {#if !noHeader}
-      <thead class="bg-gray-50">
+      <thead class="table-header">
         <tr>
           {#each columns as column}
             <th 
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+              class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer"
               class:cursor-default={!column.sortable}
               on:click={() => sort(column)}
             >
@@ -92,7 +92,7 @@
             </th>
           {/each}
           {#if rowActions.length > 0 || actionIcon}
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
               Actions
             </th>
           {/if}
@@ -100,16 +100,16 @@
       </thead>
       {/if}
       
-      <tbody class="bg-white divide-y divide-gray-200">
+      <tbody class="table-body divide-y">
         {#if sortedData.length === 0}
           <tr>
-            <td colspan={columns.length + ((rowActions.length > 0 || actionIcon) ? 1 : 0)} class="px-6 py-4 text-center text-gray-500">
+            <td colspan={columns.length + ((rowActions.length > 0 || actionIcon) ? 1 : 0)} class="px-6 py-4 text-center empty-message">
               {emptyMessage}
             </td>
           </tr>
         {:else}
           {#each sortedData as row}
-            <tr class="hover:bg-gray-50">
+            <tr class="hover-row">
               {#each columns as column}
                 <td class="px-6 py-4 whitespace-nowrap">
                   {#if column.formatter}
@@ -125,7 +125,7 @@
                     {#if rowActions.length > 0}
                       {#each rowActions as action}
                         <button 
-                          class={`focus:outline-none cursor-pointer ${action.icon === 'trash' ? 'text-red-600 hover:text-red-900' : 'text-blue-600 hover:text-blue-900'}`}
+                          class={`focus:outline-none cursor-pointer action-btn ${action.icon === 'trash' ? 'delete-btn' : 'edit-btn'}`}
                           on:click={() => handleActionClick(row, action.handler)}
                           title={action.title || ''}
                         >
@@ -145,7 +145,7 @@
                     {:else if actionIcon}
                       <!-- Backward compatibility -->
                       <button 
-                        class="text-red-600 hover:text-red-900 focus:outline-none cursor-pointer"
+                        class="focus:outline-none cursor-pointer delete-btn"
                         on:click={() => handleActionClick(row, null)}
                       >
                         {#if actionIcon === 'trash'}
@@ -172,20 +172,20 @@
   </div>
   
   {#if !noPagination && totalPages > 1}
-    <div class="px-6 py-3 flex items-center justify-between border-t border-gray-200">
+    <div class="pagination">
       <div class="flex-1 flex justify-between items-center">
         <button
-          class="px-4 py-2 border rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="pagination-btn"
           disabled={currentPage === 1}
           on:click={prevPage}
         >
           Previous
         </button>
-        <span class="text-sm text-gray-700">
+        <span class="pagination-info">
           Page {currentPage} of {totalPages}
         </span>
         <button
-          class="px-4 py-2 border rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="pagination-btn"
           disabled={currentPage === totalPages}
           on:click={nextPage}
         >
@@ -195,3 +195,87 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .data-table {
+    color: var(--text-color);
+    border-color: var(--table-border-color);
+  }
+  
+  .table-header {
+    background-color: var(--table-header-bg);
+  }
+  
+  .table-body {
+    background-color: var(--card-bg-color);
+    color: var(--text-color);
+    border-color: var(--table-border-color);
+  }
+  
+  .hover-row:hover {
+    background-color: var(--table-row-hover);
+  }
+  
+  .empty-message {
+    color: var(--secondary-color);
+  }
+  
+  .pagination {
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid var(--table-border-color);
+    background-color: var(--card-bg-color);
+  }
+  
+  .pagination-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--table-border-color);
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-color);
+    background-color: var(--button-bg-color);
+  }
+  
+  .pagination-btn:hover:not([disabled]) {
+    background-color: var(--button-hover-bg-color);
+  }
+  
+  .pagination-btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .pagination-info {
+    font-size: 0.875rem;
+    color: var(--text-color);
+  }
+  
+  .action-btn {
+    color: var(--primary-color);
+  }
+  
+  .edit-btn {
+    color: var(--primary-color);
+  }
+  
+  .edit-btn:hover {
+    color: var(--info-color);
+  }
+  
+  .delete-btn {
+    color: var(--danger-color);
+  }
+  
+  .delete-btn:hover {
+    opacity: 0.8;
+  }
+
+  .divide-y > :not([hidden]) ~ :not([hidden]) {
+    border-top-width: 1px;
+    border-top-style: solid;
+    border-top-color: var(--table-border-color);
+  }
+</style>

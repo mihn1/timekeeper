@@ -4,6 +4,7 @@
   import { formatTimeElapsed } from '../utils/formatters';
   import { refreshData } from '../stores/timekeeper';
   import { GetCategoryUsageData } from '../../wailsjs/go/main/App'; // Correct import path
+  import { theme } from '../stores/theme';
 
   import {
     Chart as ChartJS,
@@ -28,6 +29,9 @@
 
   let categoryData = [];
   let isLoading = true;
+  let isDarkMode;
+
+  $: isDarkMode = $theme === 'dark';
 
   $: if (date || $refreshData) {
     loadCategoryData();
@@ -64,7 +68,7 @@
     }]
   };
 
-  const chartOptions = {
+  $: chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -79,18 +83,35 @@
             const mins = Math.floor(value % 60);
             return `${hours}h ${mins}m`;
           }
-        }
+        },
+        backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+        titleColor: isDarkMode ? '#f0f0f0' : '#333333',
+        bodyColor: isDarkMode ? '#f0f0f0' : '#333333',
+        borderColor: isDarkMode ? '#444444' : '#e0e0e0',
+        borderWidth: 1
       }
     },
     scales: {
       y: {
         beginAtZero: true,
+        grid: {
+          color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+        },
         ticks: {
+          color: isDarkMode ? '#f0f0f0' : '#333333',
           callback: function(value) {
             const hours = Math.floor(value / 60);
             const mins = Math.floor(value % 60);
             return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
           }
+        }
+      },
+      x: {
+        grid: {
+          color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+        },
+        ticks: {
+          color: isDarkMode ? '#f0f0f0' : '#333333'
         }
       }
     }
@@ -111,6 +132,9 @@
   .chart-wrapper {
     height: 300px;
     position: relative;
+    background-color: var(--card-bg-color);
+    border-radius: 4px;
+    padding: 1rem;
   }
 
   .loading, .no-data {
@@ -118,7 +142,7 @@
     justify-content: center;
     align-items: center;
     height: 100%;
-    color: #777;
+    color: var(--secondary-color);
     font-style: italic;
   }
 </style>

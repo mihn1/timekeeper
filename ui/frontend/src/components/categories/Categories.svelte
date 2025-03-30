@@ -148,7 +148,7 @@
 </Modal>
 
 <div class="p-6 max-w-6xl mx-auto">
-  <h1 class="text-2xl font-bold mb-6 text-gray-800">Category Management</h1>
+  <h1 class="text-2xl font-bold mb-6 category-title">Category Management</h1>
   
   <!-- Action Buttons -->
   <div class="flex gap-4 mb-6">
@@ -164,10 +164,10 @@
   </div>
   
   <!-- Category List Section -->
-  <div class="bg-white rounded-lg shadow-md overflow-hidden">
-    <div class="p-5 border-b border-gray-200">
+  <div class="category-container rounded-lg shadow-md overflow-hidden">
+    <div class="p-5 border-b table-header-wrapper">
       <div class="flex justify-between items-center">
-        <h2 class="text-lg font-semibold text-gray-700">Categories</h2>
+        <h2 class="text-lg font-semibold table-header-title">Categories</h2>
         
         <div class="flex gap-4 items-center">
           <div class="flex items-center">
@@ -191,11 +191,6 @@
               class="pl-10 p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               bind:value={searchTerm}
             />
-            <div class="absolute left-3 top-2.5">
-              <svg class="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
-              </svg>
-            </div>
           </div>
         </div>
       </div>
@@ -216,3 +211,23 @@
     {/if}
   </div>
 </div>
+
+<style>
+  .category-title {
+    color: var(--text-color);
+  }
+
+  .category-container {
+    background-color: var(--card-bg-color);
+    border: 1px solid var(--card-border-color);
+  }
+
+  .table-header-wrapper {
+    background-color: var(--table-header-bg);
+    border-color: var(--table-border-color);
+  }
+
+  .table-header-title {
+    color: var(--text-color);
+  }
+</style>

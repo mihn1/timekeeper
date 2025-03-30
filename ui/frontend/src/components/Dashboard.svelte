@@ -54,12 +54,12 @@
     </div>
     
     <button 
-      class="refresh-button flex items-center justify-center p-2 rounded-full hover:bg-gray-200 focus:outline-none" 
+      class="refresh-button" 
       on:click={refreshData}
       aria-label="Refresh data"
       title="Refresh data"
     >
-      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
       </svg>
     </button>
@@ -120,13 +120,32 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    color: var(--text-color);
   }
 
   input[type="date"] {
     padding: 0.5rem;
-    border: 1px solid #ddd;
+    border: 1px solid var(--input-border-color);
     border-radius: 4px;
     font-size: 0.9rem;
+    background-color: var(--input-bg-color);
+    color: var(--input-text-color);
+  }
+
+  .refresh-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--button-bg-color);
+    color: var(--button-text-color);
+    cursor: pointer;
+  }
+
+  .refresh-button:hover {
+    background-color: var(--button-hover-bg-color);
   }
 
   .chart-container {
@@ -137,10 +156,11 @@
 
   .chart-box {
     flex: 1;
-    background: white;
+    background-color: var(--card-bg-color);
     border-radius: 8px;
     padding: 1.5rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--card-border-color);
   }
 
   h2 {
@@ -148,14 +168,15 @@
     margin-bottom: 1rem;
     font-size: 1.25rem;
     font-weight: 600;
-    color: #333;
+    color: var(--text-color);
   }
 
   .data-table {
-    background: white;
+    background-color: var(--card-bg-color);
     border-radius: 8px;
     padding: 1.5rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--card-border-color);
   }
 
   table {
@@ -166,19 +187,24 @@
   th, td {
     padding: 0.75rem 1rem;
     text-align: left;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--table-border-color);
+    color: var(--text-color);
   }
 
   th {
     font-weight: 600;
-    color: #555;
+    background-color: var(--table-header-bg);
+  }
+
+  tr:hover {
+    background-color: var(--table-row-hover);
   }
 
   .loading {
     display: flex;
     justify-content: center;
     padding: 2rem;
-    color: #666;
+    color: var(--text-color);
   }
 
   @media (max-width: 768px) {

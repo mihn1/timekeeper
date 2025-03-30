@@ -232,7 +232,7 @@
 </Modal>
 
 <div class="p-6 max-w-6xl mx-auto">
-  <h1 class="text-2xl font-bold mb-6 text-gray-800">Rule Management</h1>
+  <h1 class="text-2xl font-bold mb-6 rule-title">Rule Management</h1>
   
   <!-- Action Buttons -->
   <div class="flex justify-between mb-6">
@@ -251,16 +251,16 @@
     <div class="flex items-center">
       <label class="inline-flex items-center cursor-pointer">
         <input type="checkbox" class="form-checkbox h-5 w-5 text-blue-600" bind:checked={isGroupedView}>
-        <span class="ml-2 text-sm text-gray-700">Group by App Name</span>
+        <span class="ml-2 text-sm checkbox-label">Group by App Name</span>
       </label>
     </div>
   </div>
   
   <!-- Rule List Section -->
-  <div class="bg-white rounded-lg shadow-md overflow-hidden">
-    <div class="p-5 border-b border-gray-200">
+  <div class="rule-container rounded-lg shadow-md overflow-hidden">
+    <div class="p-5 border-b table-header-wrapper">
       <div class="flex justify-between items-center">
-        <h2 class="text-lg font-semibold text-gray-700">Rules</h2>
+        <h2 class="text-lg font-semibold table-header-title">Rules</h2>
         
         <div class="flex gap-4 items-center">
           <div class="flex items-center">
@@ -284,11 +284,6 @@
               class="pl-10 p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               bind:value={searchTerm}
             />
-            <div class="absolute left-3 top-2.5">
-              <svg class="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
-              </svg>
-            </div>
           </div>
         </div>
       </div>
@@ -301,7 +296,7 @@
     {:else if isGroupedView}
       {#each groupedRules as group}
         <div class="border-b border-gray-200 last:border-b-0">
-          <div class="bg-gray-100 p-3 font-medium">
+          <div class="group-header p-3 font-medium">
             {group.appName} ({group.rules.length} {group.rules.length === 1 ? 'rule' : 'rules'})
           </div>
           <DataTable 
@@ -330,3 +325,33 @@
     {/if}
   </div>
 </div>
+
+<style>
+  .rule-title {
+    color: var(--text-color);
+  }
+
+  .rule-container {
+    background-color: var(--card-bg-color);
+    border: 1px solid var(--card-border-color);
+  }
+
+  .table-header-wrapper {
+    background-color: var(--table-header-bg);
+    border-color: var(--table-border-color);
+  }
+
+  .table-header-title {
+    color: var(--text-color);
+  }
+
+  .group-header {
+    background-color: var(--table-header-bg);
+    color: var(--text-color);
+    border-bottom: 1px solid var(--table-border-color);
+  }
+
+  .checkbox-label {
+    color: var(--text-color);
+  }
+</style>
