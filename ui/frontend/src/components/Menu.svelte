@@ -12,9 +12,18 @@
 
 <nav class="menu">
   <div class="menu-items">
-    <button class="cursor-pointer" on:click={() => navigate('dashboard')}>Dashboard</button>
-    <button class="cursor-pointer" on:click={() => navigate('rules')}>Rule Management</button>
-    <button class="cursor-pointer" on:click={() => navigate('categories')}>Category Management</button>
+    <button 
+      class="cursor-pointer menu-item {$currentView === 'dashboard' ? 'active' : ''}" 
+      on:click={() => navigate('dashboard')}
+    >Dashboard</button>
+    <button 
+      class="cursor-pointer menu-item {$currentView === 'rules' ? 'active' : ''}" 
+      on:click={() => navigate('rules')}
+    >Rule Management</button>
+    <button 
+      class="cursor-pointer menu-item {$currentView === 'categories' ? 'active' : ''}" 
+      on:click={() => navigate('categories')}
+    >Category Management</button>
   </div>
   <div class="theme-toggle">
     <button on:click={toggleTheme} aria-label="Toggle theme">
@@ -64,5 +73,21 @@
 
   button:hover {
     background-color: var(--button-hover-bg-color);
+  }
+  
+  /* Active menu item styling */
+  .menu-item.active {
+    background-color: var(--button-hover-bg-color);
+    position: relative;
+  }
+  
+  .menu-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: var(--primary-color);
   }
 </style>
