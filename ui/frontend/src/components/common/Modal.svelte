@@ -51,11 +51,11 @@
       tabindex="-1"
     >
       <div class="border-b px-4 py-3 flex justify-between items-center">
-        <h3 id="modal-title" class="text-lg font-semibold text-gray-800">{title}</h3>
+        <h3 id="modal-title" class="text-lg font-semibold">{title}</h3>
         <!-- Use button element for close button -->
         <button 
           type="button"
-          class="text-gray-500 hover:text-gray-700 focus:outline-none cursor-pointer" 
+          class="close-button focus:outline-none cursor-pointer" 
           on:click={closeModal}
           aria-label="Close modal"
         >
@@ -84,19 +84,40 @@
   }
 
   .modal-container {
-    background-color: white;
+    background-color: var(--card-bg-color);
     border-radius: 0.5rem;
     width: 100%;
     max-width: 500px;
     max-height: 90vh;
     overflow-y: auto;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--card-shadow);
+    color: var(--text-color);
   }
 
   /* Focus outline for keyboard navigation */
   .modal-container:focus {
-    outline: 2px solid #4f46e5;
+    outline: 2px solid var(--primary-color);
     outline-offset: 2px;
+  }
+  
+  .border-b {
+    border-bottom: 1px solid var(--card-border-color);
+  }
+  
+  .text-lg {
+    font-size: 1.125rem;
+  }
+  
+  .font-semibold {
+    font-weight: 600;
+  }
+  
+  .close-button {
+    color: var(--text-color);
+  }
+  
+  .close-button:hover {
+    color: var(--primary-color);
   }
 
   @media (max-width: 640px) {

@@ -148,7 +148,7 @@
 </Modal>
 
 <div class="p-6 max-w-6xl mx-auto">
-  <h1 class="text-2xl font-bold mb-6 text-gray-800">Category Management</h1>
+  <h1 class="text-2xl font-bold mb-6 category-title">Category Management</h1>
   
   <!-- Action Buttons -->
   <div class="flex gap-4 mb-6">
@@ -164,10 +164,10 @@
   </div>
   
   <!-- Category List Section -->
-  <div class="bg-white rounded-lg shadow-md overflow-hidden">
-    <div class="p-5 border-b border-gray-200">
+  <div class="category-container rounded-lg shadow-md overflow-hidden">
+    <div class="p-5 border-b table-header-wrapper">
       <div class="flex justify-between items-center">
-        <h2 class="text-lg font-semibold text-gray-700">Categories</h2>
+        <h2 class="text-lg font-semibold table-header-title">Categories</h2>
         
         <div class="flex gap-4 items-center">
           <div class="flex items-center">
@@ -216,3 +216,23 @@
     {/if}
   </div>
 </div>
+
+<style>
+  .category-title {
+    color: var(--text-color);
+  }
+
+  .category-container {
+    background-color: var(--card-bg-color);
+    border: 1px solid var(--card-border-color);
+  }
+
+  .table-header-wrapper {
+    background-color: var(--table-header-bg);
+    border-color: var(--table-border-color);
+  }
+
+  .table-header-title {
+    color: var(--text-color);
+  }
+</style>
