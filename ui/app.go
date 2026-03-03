@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -110,20 +111,48 @@ func (a *App) Shutdown(ctx context.Context) {
 }
 
 // Expose TimeKeeper functionality to JavaScript
-func (a *App) GetAppUsageData(dateStr string) []*models.AppAggregation {
-	date, _ := datatypes.NewDateOnlyFromStr(dateStr)
-	data, _ := a.timekeeper.Storage.AppAggregations().GetAppAggregationsByDate(date)
-	return data
+func (a *App) GetAppUsageData(dateStr string) ([]*models.AppAggregation, error) {
+	if a.timekeeper == nil {
+		return nil, fmt.Errorf("timekeeper is not initialized")
+	}
+
+	date, err := datatypes.NewDateOnlyFromStr(dateStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid date format %q: %w", dateStr, err)
+	}
+
+	data, err := a.timekeeper.Storage.AppAggregations().GetAppAggregationsByDate(date)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load app usage data: %w", err)
+	}
+
+	return data, nil
 }
 
-func (a *App) GetCategoryUsageData(dateStr string) any {
-	date, _ := datatypes.NewDateOnlyFromStr(dateStr)
-	data, _ := a.timekeeper.Storage.CategoryAggregations().GetCategoryAggregationsByDate(date)
+func (a *App) GetCategoryUsageData(dateStr string) ([]map[string]any, error) {
+	if a.timekeeper == nil {
+		return nil, fmt.Errorf("timekeeper is not initialized")
+	}
+
+	date, err := datatypes.NewDateOnlyFromStr(dateStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid date format %q: %w", dateStr, err)
+	}
+
+	data, err := a.timekeeper.Storage.CategoryAggregations().GetCategoryAggregationsByDate(date)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load category usage data: %w", err)
+	}
 
 	// Enrich with category names
 	result := make([]map[string]any, 0, len(data))
 	for _, catAggr := range data {
-		cat, _ := a.timekeeper.Storage.Categories().GetCategory(catAggr.CategoryId)
+		cat, err := a.timekeeper.Storage.Categories().GetCategory(catAggr.CategoryId)
+		if err != nil {
+			a.logger.Warn("Skipping category usage row due to missing category", "categoryId", catAggr.CategoryId, "error", err)
+			continue
+		}
+
 		result = append(result, map[string]any{
 			"Id":          catAggr.CategoryId,
 			"Name":        cat.Name,
@@ -131,7 +160,7 @@ func (a *App) GetCategoryUsageData(dateStr string) any {
 		})
 	}
 
-	return result
+	return result, nil
 }
 
 func (a *App) EnableTracking() {

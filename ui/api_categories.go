@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/mihn1/timekeeper/internal/models"
 	"github.com/mihn1/timekeeper/ui/dtos"
 )
@@ -31,6 +34,14 @@ func (a *App) GetCategory(id int) (*dtos.CategoryDetail, error) {
 
 // AddCategory creates a new category
 func (a *App) AddCategory(categorydtos *dtos.CategoryCreate) error {
+	if categorydtos == nil {
+		return fmt.Errorf("category payload is required")
+	}
+
+	if strings.TrimSpace(categorydtos.Name) == "" {
+		return fmt.Errorf("category name is required")
+	}
+
 	category := categorydtos.ToModel()
 	err := a.timekeeper.Storage.Categories().UpsertCategory(category)
 
@@ -43,6 +54,14 @@ func (a *App) AddCategory(categorydtos *dtos.CategoryCreate) error {
 
 // UpdateCategory updates an existing category
 func (a *App) UpdateCategory(id int, categorydtos *dtos.CategoryUpdate) error {
+	if categorydtos == nil {
+		return fmt.Errorf("category payload is required")
+	}
+
+	if strings.TrimSpace(categorydtos.Name) == "" {
+		return fmt.Errorf("category name is required")
+	}
+
 	// First get the existing category
 	existingCategory, err := a.timekeeper.Storage.Categories().GetCategory(models.CategoryId(id))
 	if err != nil {
