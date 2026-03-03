@@ -1,7 +1,6 @@
 package macos
 
 import (
-	"log"
 	"log/slog"
 	"sync"
 	"time"
@@ -120,10 +119,10 @@ func (o *Observer) registerBrowserObserver(pid int, browserName string, callback
 		defer o.mu.Unlock()
 
 		if val, ok := o.browserListeners[browserName]; !ok || !val {
-			log.Printf("Registering browser observer for %v", browserName)
+			o.logger.Info("Registering browser observer", "browserName", browserName)
 			success := browsers.StartTabObserver(pid, browserName, callback)
 			if !success {
-				log.Printf("Failed to start observer for %v", browserName)
+				o.logger.Error("Failed to start browser observer", "browserName", browserName)
 				return
 			}
 

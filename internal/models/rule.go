@@ -3,7 +3,24 @@ package models
 import (
 	"regexp"
 	"strings"
+	"sync"
 )
+
+var regexCache sync.Map
+
+func getCompiledRegex(pattern string) (*regexp.Regexp, error) {
+	if cached, ok := regexCache.Load(pattern); ok {
+		return cached.(*regexp.Regexp), nil
+	}
+
+	compiled, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
+
+	actual, _ := regexCache.LoadOrStore(pattern, compiled)
+	return actual.(*regexp.Regexp), nil
+}
 
 type CategoryRule struct {
 	RuleId            int
@@ -27,14 +44,12 @@ func (r *CategoryRule) IsMatch(event *AppSwitchEvent) (bool, error) {
 	}
 
 	if r.IsRegex {
-		// Implement regex matching
-		// TODO: can we cache the compiled regex?
-		pattern, err := regexp.Compile("(?i)" + r.Expression)
+		pattern, err := getCompiledRegex("(?i)" + r.Expression)
 		if err != nil {
 			return false, nil
 		}
 
-		return pattern.MatchString(val), err
+		return pattern.MatchString(val), nil
 	}
 
 	return strings.Contains(strings.ToLower(val), strings.ToLower(r.Expression)), nil
