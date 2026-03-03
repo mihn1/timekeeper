@@ -211,3 +211,95 @@ func TestCloseStopsObserversOnlyOnce(t *testing.T) {
 
 	assert.Equal(t, int32(1), obs.stops.Load())
 }
+
+func TestExclusionRulePreventsAggregation(t *testing.T) {
+	tk := NewTimeKeeperInMem(TimeKeeperOptions{Logger: slog.Default()})
+	defer tk.Close()
+
+	err := tk.Storage.Rules().UpsertRule(&models.CategoryRule{
+		CategoryId:        models.EXCLUDED,
+		AppName:           "Code",
+		IsExclusion:       true,
+		Expression:        "",
+		Priority:          10,
+		AdditionalDataKey: "",
+	})
+	assert.NoError(t, err)
+
+	tk.StartTracking()
+
+	start := time.Now().UTC().Add(-2 * time.Minute)
+	next := time.Now().UTC()
+
+	tk.PushEvent(models.AppSwitchEvent{AppName: "Code", StartTime: start})
+	tk.PushEvent(models.AppSwitchEvent{AppName: "Terminal", StartTime: next})
+	time.Sleep(80 * time.Millisecond)
+
+	appAggs, err := tk.Storage.AppAggregations().GetAppAggregationsByDate(datatypes.NewDateOnly(start))
+	assert.NoError(t, err)
+	assert.Len(t, appAggs, 0)
+}
+
+func TestHigherPriorityRuleWinsDuringAggregation(t *testing.T) {
+	tk := NewTimeKeeperInMem(TimeKeeperOptions{Logger: slog.Default()})
+	defer tk.Close()
+
+	assert.NoError(t, tk.Storage.Categories().UpsertCategory(&models.Category{Id: models.WORK, Name: "Work"}))
+	assert.NoError(t, tk.Storage.Categories().UpsertCategory(&models.Category{Id: models.PERSONAL, Name: "Personal"}))
+
+	assert.NoError(t, tk.Storage.Rules().UpsertRule(&models.CategoryRule{
+		CategoryId:        models.WORK,
+		AppName:           constants.ALL_APPS,
+		AdditionalDataKey: constants.KEY_BROWSER_URL,
+		Expression:        "github.com",
+		Priority:          1,
+	}))
+
+	assert.NoError(t, tk.Storage.Rules().UpsertRule(&models.CategoryRule{
+		CategoryId:        models.PERSONAL,
+		AppName:           constants.ALL_APPS,
+		AdditionalDataKey: constants.KEY_BROWSER_URL,
+		Expression:        "github.com",
+		Priority:          5,
+	}))
+
+	tk.StartTracking()
+
+	start := time.Now().UTC().Add(-3 * time.Minute)
+	next := time.Now().UTC()
+
+	tk.PushEvent(models.AppSwitchEvent{
+		AppName:   "Code",
+		StartTime: start,
+		AdditionalData: map[string]string{
+			constants.KEY_BROWSER_URL: "https://github.com/mihn1/timekeeper",
+		},
+	})
+	tk.PushEvent(models.AppSwitchEvent{AppName: "Terminal", StartTime: next})
+	time.Sleep(80 * time.Millisecond)
+
+	catAggs, err := tk.Storage.CategoryAggregations().GetCategoryAggregationsByDate(datatypes.NewDateOnly(start))
+	assert.NoError(t, err)
+	assert.Len(t, catAggs, 1)
+	assert.Equal(t, models.PERSONAL, catAggs[0].CategoryId)
+	assert.True(t, catAggs[0].TimeElapsed > 0)
+}
+
+func TestEventsAreIgnoredWhileTrackingDisabled(t *testing.T) {
+	tk := NewTimeKeeperInMem(TimeKeeperOptions{Logger: slog.Default()})
+	defer tk.Close()
+
+	tk.StartTracking()
+	tk.Disable()
+
+	start := time.Now().UTC().Add(-2 * time.Minute)
+	next := time.Now().UTC()
+
+	tk.PushEvent(models.AppSwitchEvent{AppName: "Code", StartTime: start})
+	tk.PushEvent(models.AppSwitchEvent{AppName: "Terminal", StartTime: next})
+	time.Sleep(80 * time.Millisecond)
+
+	appAggs, err := tk.Storage.AppAggregations().GetAppAggregationsByDate(datatypes.NewDateOnly(start))
+	assert.NoError(t, err)
+	assert.Len(t, appAggs, 0)
+}
