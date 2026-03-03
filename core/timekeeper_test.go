@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"path"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -91,6 +92,21 @@ func verifyAggregations(t *testing.T, tk *TimeKeeper) {
 	// Verify aggregations are correct
 }
 
+type countingObserver struct {
+	starts atomic.Int32
+	stops  atomic.Int32
+}
+
+func (o *countingObserver) Start() error {
+	o.starts.Add(1)
+	return nil
+}
+
+func (o *countingObserver) Stop() error {
+	o.stops.Add(1)
+	return nil
+}
+
 func TestIsSameEventUsesAbsoluteTimeDelta(t *testing.T) {
 	now := time.Now().UTC()
 	prev := &models.AppSwitchEvent{
@@ -154,4 +170,44 @@ func TestGetRulesForEventSortsCombinedRulesByPriority(t *testing.T) {
 	assert.Equal(t, 5, rules[0].Priority)
 	assert.Equal(t, 3, rules[1].Priority)
 	assert.Equal(t, 1, rules[2].Priority)
+}
+
+func TestStartTrackingIsIdempotentForObserversAndLoop(t *testing.T) {
+	tk := NewTimeKeeperInMem(TimeKeeperOptions{Logger: slog.Default()})
+	defer tk.Close()
+
+	obs := &countingObserver{}
+	tk.AddObserver(obs)
+
+	tk.StartTracking()
+	tk.StartTracking()
+
+	time.Sleep(50 * time.Millisecond)
+
+	assert.True(t, tk.IsEnabled())
+	assert.Equal(t, int32(1), obs.starts.Load())
+	assert.True(t, tk.eventLoopStarted)
+
+	tk.Disable()
+	assert.False(t, tk.IsEnabled())
+
+	tk.StartTracking()
+	time.Sleep(50 * time.Millisecond)
+
+	assert.True(t, tk.IsEnabled())
+	assert.Equal(t, int32(1), obs.starts.Load())
+}
+
+func TestCloseStopsObserversOnlyOnce(t *testing.T) {
+	tk := NewTimeKeeperInMem(TimeKeeperOptions{Logger: slog.Default()})
+	obs := &countingObserver{}
+	tk.AddObserver(obs)
+
+	tk.StartTracking()
+	time.Sleep(30 * time.Millisecond)
+
+	tk.Close()
+	tk.Close()
+
+	assert.Equal(t, int32(1), obs.stops.Load())
 }

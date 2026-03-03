@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"slices"
+	"sync"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -37,14 +38,26 @@ type TimeKeeper struct {
 	Storage      interfaces.Storage
 	isEnabled    bool
 	eventChannel chan models.AppSwitchEvent
+	done         chan struct{}
 	observers    []Observer
 	logger       *slog.Logger
+
+	stateMu          sync.RWMutex
+	eventLoopStarted bool
+	observersStarted bool
+	closed           bool
+	closeOnce        sync.Once
 }
 
 func NewTimeKeeperInMem(opts TimeKeeperOptions) *TimeKeeper {
+	if opts.Logger == nil {
+		opts.Logger = slog.Default()
+	}
+
 	t := &TimeKeeper{
 		Storage:      inmem.NewInmemStorage(),
 		eventChannel: make(chan models.AppSwitchEvent),
+		done:         make(chan struct{}),
 		opts:         opts,
 		logger:       opts.Logger,
 	}
@@ -52,6 +65,10 @@ func NewTimeKeeperInMem(opts TimeKeeperOptions) *TimeKeeper {
 }
 
 func NewTimeKeeperSqlite(opts TimeKeeperOptions) *TimeKeeper {
+	if opts.Logger == nil {
+		opts.Logger = slog.Default()
+	}
+
 	if opts.StoragePath == "" {
 		opts.StoragePath = "./timekeeper.db"
 	}
@@ -78,6 +95,7 @@ func NewTimeKeeperSqlite(opts TimeKeeperOptions) *TimeKeeper {
 	t := &TimeKeeper{
 		Storage:      sqlite.NewSqliteStorage(db),
 		eventChannel: make(chan models.AppSwitchEvent),
+		done:         make(chan struct{}),
 		opts:         opts,
 		logger:       opts.Logger,
 	}
@@ -93,6 +111,9 @@ func (t *TimeKeeper) Logger() *slog.Logger {
 }
 
 func (t *TimeKeeper) AddObserver(o Observer) {
+	t.stateMu.Lock()
+	defer t.stateMu.Unlock()
+
 	if t.observers == nil {
 		t.observers = make([]Observer, 0)
 	}
@@ -100,44 +121,78 @@ func (t *TimeKeeper) AddObserver(o Observer) {
 }
 
 func (t *TimeKeeper) Close() {
-	t.logger.Info("Closing TimeKeeper...")
-	t.Disable()
-	t.Storage.Close()
+	t.closeOnce.Do(func() {
+		t.logger.Info("Closing TimeKeeper...")
 
-	if t.observers != nil {
-		for _, obs := range t.observers {
+		t.stateMu.Lock()
+		t.isEnabled = false
+		t.closed = true
+		close(t.done)
+		observers := append([]Observer(nil), t.observers...)
+		t.stateMu.Unlock()
+
+		for _, obs := range observers {
 			obs.Stop()
 		}
-	}
+
+		t.Storage.Close()
+	})
 }
 
 func (t *TimeKeeper) Disable() {
+	t.stateMu.Lock()
+	defer t.stateMu.Unlock()
+
 	t.isEnabled = false
 }
 
 func (t *TimeKeeper) IsEnabled() bool {
+	t.stateMu.RLock()
+	defer t.stateMu.RUnlock()
+
 	return t.isEnabled
 }
 
 func (t *TimeKeeper) StartTracking() {
+	t.stateMu.Lock()
+	defer t.stateMu.Unlock()
+
+	if t.closed {
+		t.logger.Warn("StartTracking ignored: TimeKeeper already closed")
+		return
+	}
+
+	if t.isEnabled {
+		t.logger.Debug("StartTracking ignored: already enabled")
+		return
+	}
+
 	t.logger.Info("Starting TimeKeeper...")
 
 	t.isEnabled = true
 	defaultResolver = resolvers.NewDefaultCategoryResolver(t.Storage.Rules(), t.Storage.Categories())
 
-	// Start all observers
-	if t.observers != nil {
+	if !t.observersStarted && t.observers != nil {
 		for _, obs := range t.observers {
 			go obs.Start()
 		}
+		t.observersStarted = true
 	}
 
-	// Start listening for events
-	go func() {
-		for event := range t.eventChannel {
-			t.handleEvent(&event)
-		}
-	}()
+	if !t.eventLoopStarted {
+		go func() {
+			for {
+				select {
+				case event := <-t.eventChannel:
+					t.handleEvent(&event)
+				case <-t.done:
+					return
+				}
+			}
+		}()
+
+		t.eventLoopStarted = true
+	}
 
 	t.logger.Info("TimeKeeper started")
 }
@@ -154,8 +209,17 @@ func (t *TimeKeeper) Report(date datatypes.DateOnly) {
 }
 
 func (t *TimeKeeper) PushEvent(event models.AppSwitchEvent) {
-	if t.IsEnabled() {
-		t.eventChannel <- event
+	t.stateMu.RLock()
+	enabled := t.isEnabled && !t.closed
+	t.stateMu.RUnlock()
+
+	if !enabled {
+		return
+	}
+
+	select {
+	case t.eventChannel <- event:
+	case <-t.done:
 	}
 }
 
@@ -168,7 +232,7 @@ func (t *TimeKeeper) handleEvent(event *models.AppSwitchEvent) {
 	}
 
 	// TODO: gracefully handle the case when the timekeeper is disabled
-	if !t.isEnabled {
+	if !t.IsEnabled() {
 		return
 	}
 
