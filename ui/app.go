@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"log/slog"
+	"os"
+	"path/filepath"
 
 	"github.com/mihn1/timekeeper/core"
 	"github.com/mihn1/timekeeper/datatypes"
@@ -15,6 +17,7 @@ type App struct {
 	ctx        context.Context
 	timekeeper *core.TimeKeeper
 	logger     *slog.Logger
+	config     AppConfig
 }
 
 // NewApp creates a new App application struct
@@ -33,15 +36,11 @@ func (a *App) Startup(ctx context.Context) {
 	slog.SetDefault(a.logger)
 
 	// Initialize TimeKeeper directly (not in goroutine)
-	opts := core.TimeKeeperOptions{
-		StoreEvents: true,
-		StoragePath: "../db/timekeeper-refactor.db",
-		Logger:      a.logger,
-	}
+	a.config = LoadAppConfig(os.Getenv)
+	a.logger.Info("Loaded app config", "dbType", a.config.DBType, "dbPath", a.config.DBPath, "seedMode", a.config.SeedMode)
 
-	// Create a new TimeKeeper instance
-	a.timekeeper = core.NewTimeKeeperSqlite(opts)
-	core.SeedData(a.timekeeper)
+	a.timekeeper = a.newTimeKeeperFromConfig()
+	a.seedIfNeeded()
 
 	// Set up the macOS observer
 	observer := macos.NewObserver(a.timekeeper.PushEvent, false, a.logger)
@@ -49,6 +48,57 @@ func (a *App) Startup(ctx context.Context) {
 
 	// Start tracking
 	a.timekeeper.StartTracking()
+}
+
+func (a *App) newTimeKeeperFromConfig() *core.TimeKeeper {
+	opts := core.TimeKeeperOptions{Logger: a.logger}
+
+	if a.config.DBType == "inmem" {
+		a.logger.Info("Starting TimeKeeper with in-memory storage")
+		return core.NewTimeKeeperInMem(opts)
+	}
+
+	dbDir := filepath.Dir(a.config.DBPath)
+	if dbDir != "" && dbDir != "." {
+		if err := os.MkdirAll(dbDir, 0o755); err != nil {
+			a.logger.Warn("Failed to create DB directory", "dir", dbDir, "error", err)
+		}
+	}
+
+	opts.StoragePath = a.config.DBPath
+	opts.StoreEvents = true
+	a.logger.Info("Starting TimeKeeper with sqlite storage", "path", opts.StoragePath)
+	return core.NewTimeKeeperSqlite(opts)
+}
+
+func (a *App) seedIfNeeded() {
+	if a.timekeeper == nil {
+		return
+	}
+
+	switch a.config.SeedMode {
+	case "never":
+		a.logger.Info("Skipping data seeding", "mode", a.config.SeedMode)
+		return
+	case "always":
+		a.logger.Info("Seeding data", "mode", a.config.SeedMode)
+		core.SeedData(a.timekeeper)
+		return
+	}
+
+	categories, err := a.timekeeper.Storage.Categories().GetCategories()
+	if err != nil {
+		a.logger.Warn("Unable to inspect categories before seeding, skipping", "error", err)
+		return
+	}
+
+	if len(categories) > 0 {
+		a.logger.Info("Skipping data seeding: categories already exist", "count", len(categories))
+		return
+	}
+
+	a.logger.Info("Seeding data", "mode", a.config.SeedMode)
+	core.SeedData(a.timekeeper)
 }
 
 func (a *App) Shutdown(ctx context.Context) {

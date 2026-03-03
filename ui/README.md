@@ -33,9 +33,14 @@ wails build
 
 ## Important Project-Specific Behavior
 
-- The app currently initializes SQLite with a fixed path in `ui/app.go` (`../db/timekeeper-refactor.db`).
-- `core.SeedData(...)` is called on startup.
+- App startup behavior is configurable through environment variables.
 - Tracking uses the non-standalone macOS observer mode.
+
+### Runtime Configuration
+
+- `TIMEKEEPER_DB`: `sqlite` (default) or `inmem`
+- `TIMEKEEPER_DB_PATH`: SQLite file path (default: `../db/timekeeper.db`)
+- `TIMEKEEPER_SEED_MODE`: `if-empty` (default), `always`, or `never`
 
 ## Contributor / Agent Rules
 
