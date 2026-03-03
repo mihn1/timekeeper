@@ -86,6 +86,8 @@ func (s *EventStore) GetEventsByDate(date datatypes.DateOnly) ([]*models.AppSwit
 				return nil, err
 			}
 		}
+
+		events = append(events, &event)
 	}
 
 	return events, nil

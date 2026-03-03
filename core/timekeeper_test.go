@@ -1,20 +1,21 @@
 package core
 
 import (
+	"log/slog"
 	"os"
 	"path"
 	"testing"
 	"time"
 
-	"github.com/mihn1/timekeeper/datatypes"
 	"github.com/mihn1/timekeeper/constants"
+	"github.com/mihn1/timekeeper/datatypes"
 	"github.com/mihn1/timekeeper/internal/models"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTimeKeeperEventProcessing(t *testing.T) {
 	// Create an in-memory TimeKeeper for testing
-	timekeeper := NewTimeKeeperInMem(TimeKeeperOptions{})
+	timekeeper := NewTimeKeeperInMem(TimeKeeperOptions{Logger: slog.Default()})
 	defer timekeeper.Close()
 
 	// Seed test data
@@ -65,6 +66,7 @@ func TestEndToEndSqlite(t *testing.T) {
 	timekeeper := NewTimeKeeperSqlite(TimeKeeperOptions{
 		StoragePath: tmpFile,
 		StoreEvents: true,
+		Logger:      slog.Default(),
 	})
 	defer timekeeper.Close()
 
@@ -87,4 +89,69 @@ func simulateEvents(t *testing.T, tk *TimeKeeper) {
 
 func verifyAggregations(t *testing.T, tk *TimeKeeper) {
 	// Verify aggregations are correct
+}
+
+func TestIsSameEventUsesAbsoluteTimeDelta(t *testing.T) {
+	now := time.Now().UTC()
+	prev := &models.AppSwitchEvent{
+		AppName:   "Code",
+		StartTime: now,
+		AdditionalData: map[string]string{
+			constants.KEY_BROWSER_URL: "https://github.com",
+		},
+	}
+
+	next := &models.AppSwitchEvent{
+		AppName:   "Code",
+		StartTime: now.Add(30 * time.Second),
+		AdditionalData: map[string]string{
+			constants.KEY_BROWSER_URL: "https://github.com",
+		},
+	}
+
+	assert.True(t, isSameEvent(prev, next))
+}
+
+func TestGetRulesForEventSortsCombinedRulesByPriority(t *testing.T) {
+	tk := NewTimeKeeperInMem(TimeKeeperOptions{Logger: slog.Default()})
+	defer tk.Close()
+
+	err := tk.Storage.Rules().UpsertRule(&models.CategoryRule{
+		CategoryId: models.WORK,
+		AppName:    "Code",
+		Priority:   1,
+	})
+	assert.NoError(t, err)
+
+	err = tk.Storage.Rules().UpsertRule(&models.CategoryRule{
+		CategoryId:        models.PERSONAL,
+		AppName:           constants.ALL_APPS,
+		AdditionalDataKey: constants.KEY_BROWSER_URL,
+		Expression:        "github.com",
+		Priority:          5,
+	})
+	assert.NoError(t, err)
+
+	err = tk.Storage.Rules().UpsertRule(&models.CategoryRule{
+		CategoryId:        models.ENTERTAINMENT,
+		AppName:           constants.ALL_APPS,
+		AdditionalDataKey: constants.KEY_BROWSER_URL,
+		Expression:        "docs",
+		Priority:          3,
+	})
+	assert.NoError(t, err)
+
+	event := &models.AppSwitchEvent{
+		AppName: "Code",
+		AdditionalData: map[string]string{
+			constants.KEY_BROWSER_URL: "https://github.com",
+		},
+	}
+
+	rules, err := tk.getRulesForEvent(event)
+	assert.NoError(t, err)
+	assert.Len(t, rules, 3)
+	assert.Equal(t, 5, rules[0].Priority)
+	assert.Equal(t, 3, rules[1].Priority)
+	assert.Equal(t, 1, rules[2].Priority)
 }

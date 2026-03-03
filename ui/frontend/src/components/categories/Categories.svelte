@@ -53,7 +53,7 @@
     if (!categoryToDelete) return;
     
     try {
-      await DeleteCategory(categoryToDelete.Id);
+      await DeleteCategory(categoryToDelete.id);
       showDeleteModal = false;
       categoryToDelete = null;
       loadCategories();
@@ -133,7 +133,7 @@
   on:close={() => showDeleteModal = false}
 >
   <div class="p-4">
-    <p class="mb-4">Are you sure you want to delete the category: <strong>{categoryToDelete?.Name}</strong>?</p>
+    <p class="mb-4">Are you sure you want to delete the category: <strong>{categoryToDelete?.name}</strong>?</p>
     <p class="mb-4 text-red-600">This action cannot be undone. All rules associated with this category will also be deleted.</p>
     
     <div class="flex justify-end gap-2">

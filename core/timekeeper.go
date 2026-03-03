@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"slices"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mihn1/timekeeper/constants"
@@ -269,7 +270,7 @@ func (t *TimeKeeper) getRulesForEvent(event *models.AppSwitchEvent) ([]*models.C
 	}
 
 	rules = append(rules, globalRules...)
-	slices.SortStableFunc(globalRules, models.CmpRules)
+	slices.SortStableFunc(rules, models.CmpRules)
 
 	return rules, nil
 }
@@ -285,8 +286,13 @@ func isSameEvent(e1, e2 *models.AppSwitchEvent) bool {
 		}
 	}
 
-	// If the events are within 60 seconds of each other, consider them the same event
-	return e1.StartTime.Sub(e2.StartTime).Seconds() <= 60
+	// If the events are within 60 seconds of each other, consider them the same event.
+	delta := e1.StartTime.Sub(e2.StartTime)
+	if delta < 0 {
+		delta = -delta
+	}
+
+	return delta <= 60*time.Second
 }
 
 func isEventExcluded(event *models.AppSwitchEvent, rules []*models.CategoryRule) (excluded bool, rule *models.CategoryRule) {
