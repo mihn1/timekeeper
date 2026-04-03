@@ -3,7 +3,8 @@
   import { Bar } from 'svelte-chartjs';
   import { formatTimeElapsed } from '../utils/formatters';
   import { refreshData } from '../stores/timekeeper';
-  import { GetCategoryUsageData } from '../../wailsjs/go/main/App'; // Correct import path
+  import { GetCategoryUsageData } from '../../wailsjs/go/main/App';
+  import { dtos } from '../../wailsjs/go/models';
   import { theme } from '../stores/theme';
 
   import {
@@ -27,7 +28,7 @@
 
   export let date;
 
-  let categoryData = [];
+  let categoryData: dtos.CategoryUsageItem[] = [];
   let isLoading = true;
   let isDarkMode;
 
@@ -46,8 +47,7 @@
     try {
       categoryData = await GetCategoryUsageData(date); // Correct function call
 
-      // Sort by time spent
-      categoryData.sort((a, b) => b.TimeElapsed - a.TimeElapsed);
+      categoryData.sort((a, b) => b.timeElapsed - a.timeElapsed);
     } catch (err) {
       console.error('Error loading category data:', err);
       categoryData = [];
@@ -57,10 +57,10 @@
   }
 
   $: chartData = {
-    labels: categoryData.map(cat => cat.Name),
+    labels: categoryData.map(cat => cat.name),
     datasets: [{
       label: 'Time Spent (minutes)',
-      data: categoryData.map(cat => cat.TimeElapsed / 60000), // Convert ms to mins
+      data: categoryData.map(cat => cat.timeElapsed / 60000), // Convert ms to mins
       backgroundColor: [
         '#4E79A7', '#F28E2C', '#E15759', '#76B7B2', '#59A14F',
         '#EDC949', '#AF7AA1', '#FF9DA7', '#9C755F', '#BAB0AB'

@@ -22,9 +22,9 @@
   // Update local state when category prop changes or show becomes true
   $: if (category && show && !initialized) {
     editedCategory = {
-      id: category.id !== undefined ? category.id : (category.Id || ''),
-      name: category.name !== undefined ? category.name : (category.Name || ''),
-      description: category.description !== undefined ? category.description : (category.Description || '')
+      id: category.id,
+      name: category.name,
+      description: category.description
     };
     initialized = true;
   }
@@ -49,9 +49,8 @@
 
   async function saveCategory() {
     if (!validateForm()) return;
-    
+
     try {
-      console.log('Saving category:', editedCategory);
       await UpdateCategory(editedCategory.id, editedCategory);
       dispatch('categoryEdited');
     } catch (err) {

@@ -27,6 +27,9 @@ go.work.sum
 *.db*
 db/*
 
+# AI session exports
+session-*.md
+
 # wails gitignore
 ui/build/bin
 ui/frontend/node_modules

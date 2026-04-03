@@ -129,7 +129,7 @@ func (a *App) GetAppUsageData(dateStr string) ([]*models.AppAggregation, error) 
 	return data, nil
 }
 
-func (a *App) GetCategoryUsageData(dateStr string) ([]map[string]any, error) {
+func (a *App) GetCategoryUsageData(dateStr string) ([]*dtos.CategoryUsageItem, error) {
 	if a.timekeeper == nil {
 		return nil, fmt.Errorf("timekeeper is not initialized")
 	}
@@ -144,8 +144,7 @@ func (a *App) GetCategoryUsageData(dateStr string) ([]map[string]any, error) {
 		return nil, fmt.Errorf("failed to load category usage data: %w", err)
 	}
 
-	// Enrich with category names
-	result := make([]map[string]any, 0, len(data))
+	result := make([]*dtos.CategoryUsageItem, 0, len(data))
 	for _, catAggr := range data {
 		cat, err := a.timekeeper.Storage.Categories().GetCategory(catAggr.CategoryId)
 		if err != nil {
@@ -153,10 +152,10 @@ func (a *App) GetCategoryUsageData(dateStr string) ([]map[string]any, error) {
 			continue
 		}
 
-		result = append(result, map[string]any{
-			"Id":          catAggr.CategoryId,
-			"Name":        cat.Name,
-			"TimeElapsed": catAggr.TimeElapsed,
+		result = append(result, &dtos.CategoryUsageItem{
+			Id:          int(catAggr.CategoryId),
+			Name:        cat.Name,
+			TimeElapsed: catAggr.TimeElapsed,
 		})
 	}
 

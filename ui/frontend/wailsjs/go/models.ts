@@ -63,6 +63,22 @@ export namespace dtos {
 	        this.description = source["description"];
 	    }
 	}
+	export class CategoryUsageItem {
+	    id: number;
+	    name: string;
+	    timeElapsed: number;
+
+	    static createFrom(source: any = {}) {
+	        return new CategoryUsageItem(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.timeElapsed = source["timeElapsed"];
+	    }
+	}
 	export class CategoryUpdate {
 	    id: number;
 	    name: string;

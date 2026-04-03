@@ -2,7 +2,6 @@ package core
 
 import (
 	"log/slog"
-	"os"
 	"path"
 	"sync/atomic"
 	"testing"
@@ -55,41 +54,64 @@ func TestTimeKeeperEventProcessing(t *testing.T) {
 }
 
 func TestEndToEndSqlite(t *testing.T) {
-	// Skip in CI environments
-	if os.Getenv("CI") != "" {
-		t.Skip("Skipping in CI environment")
-	}
-
-	// Create temp DB
 	tmpFile := path.Join(t.TempDir(), "timekeeper.db")
 
-	// Create TimeKeeper with SQLite storage
-	timekeeper := NewTimeKeeperSqlite(TimeKeeperOptions{
+	tk := NewTimeKeeperSqlite(TimeKeeperOptions{
 		StoragePath: tmpFile,
 		StoreEvents: true,
 		Logger:      slog.Default(),
 	})
-	defer timekeeper.Close()
+	defer tk.Close()
 
-	// Initialize data
-	SeedData(timekeeper)
+	SeedData(tk)
+	tk.StartTracking()
 
-	// Start tracking
-	timekeeper.StartTracking()
-
-	// Simulate application usage
-	simulateEvents(t, timekeeper)
-
-	// Verify data is correctly stored and categorized
-	verifyAggregations(t, timekeeper)
+	simulateEvents(t, tk)
+	assertAggregations(t, tk)
 }
 
 func simulateEvents(t *testing.T, tk *TimeKeeper) {
-	// Implement simulation logic
+	t.Helper()
+
+	now := time.Now().UTC()
+	// Code for 3 minutes, then Ghostty for 2 minutes, Finder still open
+	tk.PushEvent(models.AppSwitchEvent{AppName: "Code", StartTime: now.Add(-5 * time.Minute)})
+	tk.PushEvent(models.AppSwitchEvent{AppName: "Ghostty", StartTime: now.Add(-2 * time.Minute)})
+	tk.PushEvent(models.AppSwitchEvent{AppName: "Finder", StartTime: now})
+
+	// Allow the event loop to process all three pushes
+	time.Sleep(100 * time.Millisecond)
 }
 
-func verifyAggregations(t *testing.T, tk *TimeKeeper) {
-	// Verify aggregations are correct
+func assertAggregations(t *testing.T, tk *TimeKeeper) {
+	t.Helper()
+
+	date := datatypes.NewDateOnly(time.Now().UTC())
+
+	// Two apps were closed (Code and Ghostty); Finder is still the current event
+	appAggs, err := tk.Storage.AppAggregations().GetAppAggregationsByDate(date)
+	assert.NoError(t, err)
+	assert.Len(t, appAggs, 2)
+
+	appNames := make(map[string]bool, len(appAggs))
+	for _, a := range appAggs {
+		appNames[a.AppName] = true
+		assert.Greater(t, a.TimeElapsed, int64(0), "expected positive elapsed time for %s", a.AppName)
+	}
+	assert.True(t, appNames["Code"], "expected Code aggregation")
+	assert.True(t, appNames["Ghostty"], "expected Ghostty aggregation")
+
+	// Both Code and Ghostty match the WORK category — one combined aggregation record
+	catAggs, err := tk.Storage.CategoryAggregations().GetCategoryAggregationsByDate(date)
+	assert.NoError(t, err)
+	assert.Len(t, catAggs, 1)
+	assert.Equal(t, models.WORK, catAggs[0].CategoryId)
+	assert.Greater(t, catAggs[0].TimeElapsed, int64(0))
+
+	// Raw events persisted: Code and Ghostty (Finder is still open)
+	events, err := tk.Storage.Events().GetEventsByDate(date)
+	assert.NoError(t, err)
+	assert.Len(t, events, 2)
 }
 
 type countingObserver struct {

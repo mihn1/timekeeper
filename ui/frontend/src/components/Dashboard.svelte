@@ -8,6 +8,7 @@
   let selectedDate = new Date().toISOString().split('T')[0];
   let appUsageData = [];
   let isLoading = true;
+  let loadError = null;
 
   // Subscribe to refresh events
   $: if ($refreshData && selectedDate) {
@@ -20,12 +21,16 @@
 
   async function loadData() {
     isLoading = true;
+    loadError = null;
     try {
-      appUsageData = await GetAppUsageData(selectedDate);
-      // Sort by time elapsed (descending)
+      const result = await GetAppUsageData(selectedDate);
+      if (result === null) throw new Error('Server returned no data');
+      appUsageData = result;
       appUsageData.sort((a, b) => b.TimeElapsed - a.TimeElapsed);
     } catch (err) {
       console.error('Error loading data:', err);
+      loadError = 'Failed to load data. Please try again.';
+      appUsageData = [];
     } finally {
       isLoading = false;
     }
@@ -67,6 +72,14 @@
   
   {#if isLoading}
     <div class="loading">Loading data...</div>
+  {:else if loadError}
+    <div class="flex items-center gap-2 p-4 text-red-700 bg-red-50 border border-red-200 rounded">
+      <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+      </svg>
+      <span>{loadError}</span>
+      <button class="ml-auto text-sm underline cursor-pointer" on:click={loadData}>Retry</button>
+    </div>
   {:else}
     <div class="chart-container">
       <div class="chart-box">

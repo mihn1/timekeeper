@@ -11,6 +11,7 @@
 
   let categories: dtos.CategoryListItem[] = [];
   let isLoading = true;
+  let loadError: string | null = null;
   let showDeleteModal = false;
   let showCreateCategoryModal = false;
   let showEditCategoryModal = false;
@@ -35,10 +36,14 @@
 
   async function loadCategories() {
     isLoading = true;
+    loadError = null;
     try {
-      categories = await GetCategories();
+      const result = await GetCategories();
+      if (result === null) throw new Error('Server returned no data');
+      categories = result;
     } catch (err) {
       console.error('Error loading categories:', err);
+      loadError = 'Failed to load categories. Please try again.';
     } finally {
       isLoading = false;
     }
@@ -81,7 +86,6 @@
   }
 
   function editCategory(category) {
-    console.log('Editing category:', category);
     categoryToEdit = { ...category }; // Create a copy to avoid reference issues
     showEditCategoryModal = true;
   }
@@ -200,9 +204,17 @@
       <div class="flex justify-center items-center py-12">
         <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
       </div>
+    {:else if loadError}
+      <div class="flex items-center gap-2 p-4 m-4 text-red-700 bg-red-50 border border-red-200 rounded">
+        <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+        </svg>
+        <span>{loadError}</span>
+        <button class="ml-auto text-sm underline cursor-pointer" on:click={loadCategories}>Retry</button>
+      </div>
     {:else}
-      <DataTable 
-        data={filteredCategories} 
+      <DataTable
+        data={filteredCategories}
         columns={tableColumns}
         rowActions={rowActions}
         emptyMessage="No categories found"

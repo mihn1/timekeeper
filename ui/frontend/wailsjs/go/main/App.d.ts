@@ -23,7 +23,7 @@ export function GetCategories():Promise<Array<dtos.CategoryListItem>>;
 
 export function GetCategory(arg1:number):Promise<dtos.CategoryDetail>;
 
-export function GetCategoryUsageData(arg1:string):Promise<any>;
+export function GetCategoryUsageData(arg1:string):Promise<Array<dtos.CategoryUsageItem>>;
 
 export function GetRule(arg1:number):Promise<dtos.RuleDetail>;
 

@@ -50,6 +50,12 @@ func CategoryDetailFromModel(category *models.Category) *CategoryDetail {
 	}
 }
 
+type CategoryUsageItem struct {
+	Id          int    `json:"id"`
+	Name        string `json:"name"`
+	TimeElapsed int64  `json:"timeElapsed"`
+}
+
 func CategoryListFromModels(categories []*models.Category) []*CategoryListItem {
 	result := make([]*CategoryListItem, len(categories))
 	for i, category := range categories {
