@@ -1,3 +1,6 @@
+//go:build darwin
+// +build darwin
+
 #import <Cocoa/Cocoa.h>
 #include <Foundation/Foundation.h>
 #include <stdlib.h>

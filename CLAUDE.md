@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Snapshot
 
-TimeKeeper is a macOS-focused time tracking app written in Go.
+TimeKeeper is a cross-platform (macOS + Windows) time tracking app written in Go.
 It tracks active applications and browser tab changes, maps activity to categories using rules, and stores daily aggregations in SQLite (or in-memory for tests/dev).
 
 There are two runnable surfaces:
@@ -17,14 +17,17 @@ There are two runnable surfaces:
 From repo root:
 
 ```bash
-# Run all tests
-go test ./...
+# Run all tests (excluding ui which needs frontend built)
+go test ./core/... ./platforms/... ./internal/...
 
 # Run a single test
 go test ./core/... -run TestName
 
-# Build CLI binary
+# Build CLI binary (macOS)
 go build -o timekeeper ./cmd/cli
+
+# Build CLI binary (Windows)
+GOARCH=amd64 GOOS=windows go build -o timekeeper.exe ./cmd/cli
 
 # Run CLI with SQLite
 ./timekeeper --db sqlite --dbpath ./db/timekeeper.db
@@ -51,7 +54,7 @@ npm run build
 
 Event flow:
 
-1. macOS observer emits `AppSwitchEvent`
+1. Platform observer emits `AppSwitchEvent`
 2. `core.TimeKeeper` receives event through `PushEvent`
 3. Previous active event is closed when new one arrives
 4. Elapsed time is aggregated by app and category
@@ -60,8 +63,11 @@ Event flow:
 
 Core components:
 
-- `macos/observer.go`: subscribes to app activation/launch/terminate notifications
-- `macos/browsers/tab_observer.go` + `tab_observer.m`: accessibility + AppleScript browser tab observer bridge
+- `platforms/observer_darwin.go` / `platforms/observer_windows.go`: platform factory that returns the correct observer
+- `platforms/darwin/observer.go`: subscribes to app activation/launch/terminate notifications (darwin)
+- `platforms/darwin/browsers/tab_observer.go` + `tab_observer.m`: accessibility + AppleScript browser tab observer bridge (darwin)
+- `platforms/windows/observer.go`: WinEvent hook-based observer (windows)
+- `platforms/windows/browsers/url_extractor.go`: browser URL extraction via Win32 API + session file fallback (windows)
 - `core/timekeeper.go`: orchestration, event handling, aggregation, exclusion handling
 - `core/resolvers/default_category_resolver.go`: rule-based category resolution
 - `internal/data/*`: storage abstraction and implementations (`sqlite`, `inmem`)
@@ -76,7 +82,13 @@ Core components:
 - `internal/data/interfaces/` — storage interfaces
 - `internal/data/sqlite/` — SQLite-backed stores, table creation at startup
 - `internal/data/inmem/` — in-memory stores for tests/dev
-- `macos/` — macOS observation layer
+- `platforms/` — all platform-specific code
+  - `platforms/observer_darwin.go` — factory: wraps `platforms/darwin.NewObserver`
+  - `platforms/observer_windows.go` — factory: wraps `platforms/windows.NewObserver`
+  - `platforms/darwin/observer.go` — macOS observer (darwinkit + NSWorkspace notifications)
+  - `platforms/darwin/browsers/` — AppleScript tab observer (Cgo + Objective-C)
+  - `platforms/windows/observer.go` — WinEvent hook observer
+  - `platforms/windows/browsers/url_extractor.go` — Win32 + PowerShell URL extraction
 - `ui/` — Wails Go app + bound API methods
 - `ui/dtos/` — JSON-facing DTOs for Wails methods
 - `ui/frontend/` — Svelte UI (dashboard, rules, categories)
@@ -89,7 +101,7 @@ Core components:
 - Supports `--db sqlite|inmem`
 - SQLite mode enables raw event persistence (`StoreEvents=true`)
 - In-memory mode forces seed-only behavior
-- Uses standalone macOS observer (`isStandalone=true`)
+- Uses standalone observer (`isStandalone=true`) via `platforms.NewPlatformObserver`
 
 ### Wails desktop mode (`ui/main.go`)
 
@@ -157,18 +169,52 @@ Files to inspect first:
 
 **New Wails API method:** implement in `ui/app.go` or a new `ui/api_*.go` file → run `wails dev` to regenerate `wailsjs` bindings → call from Svelte.
 
+**Add a new platform observer:** implement `Start()`/`Stop()` satisfying `core.Observer` → add a `platforms/observer_GOOS.go` file with the appropriate build tag that returns it from `NewPlatformObserver`.
+
 **Change rule/category matching:** update `internal/models/rule.go` → adjust resolver flow in `core/timekeeper.go` if needed → add tests in `core/resolvers/resolvers_test.go` and `core/timekeeper_test.go`.
 
 **Change storage schema:** update interface in `internal/data/interfaces/` → implement in both `internal/data/sqlite/` and `internal/data/inmem/` → update call sites in `core/` and `ui/`.
 
 **Update dashboard data shape:** adjust Go return DTO/model in `ui/app.go` → update generated binding usage in `ui/frontend` → update chart/table components.
 
+## Windows Observer
+
+The Windows observer (`platforms/windows/observer.go`) uses Win32 WinEvent hooks:
+
+- `EVENT_SYSTEM_FOREGROUND` — fires when the active window changes
+- `EVENT_OBJECT_NAMECHANGE` — fires when the foreground window's title changes (catches browser tab switches)
+- Both hooks use `WINEVENT_OUTOFCONTEXT` which requires a Win32 message pump (`GetMessageW`/`DispatchMessageW`) on the hook thread
+- `core.StartTracking` calls `go obs.Start()` so the blocking message loop runs in its own goroutine
+- `Stop()` posts `WM_QUIT` to the message loop thread; a `readyCh` channel prevents a race when `Stop()` is called before `o.tid` is set
+
+### Browser URL extraction (Windows)
+
+`platforms/windows/browsers/url_extractor.go` tries two approaches in order:
+
+1. **Win32 child-window enumeration** — walks the browser window's child HWND tree looking for `Chrome_OmniboxView` / `Edit` class controls and reads their text via `WM_GETTEXT`
+2. **PowerShell UI Automation fallback** — targets the specific window handle via `AutomationElement::FromHandle`
+
+Both fail gracefully if the browser window is not in focus or the HWND is invalid.
+
+### App name normalization
+
+`normalizeAppName` maps `.exe` base names to display names:
+
+| Executable   | App name        |
+|--------------|-----------------|
+| `chrome.exe` | `Google Chrome` |
+| `brave.exe`  | `Brave Browser` |
+| `msedge.exe` | `Microsoft Edge`|
+| `firefox.exe`| `Firefox`       |
+| others       | stem (lower-case, no `.exe`) |
+
 ## Known Quirks
 
-- macOS-only: tracking relies on darwinkit, AX observer, and AppleScript.
+- macOS tracking relies on darwinkit, AX observer, and AppleScript; Windows tracking uses WinEvent hooks.
 - Events within 60 seconds of an identical prior event are deduplicated (`isSameEvent` in `core/timekeeper.go`).
 - `wailsjs/` files are generated artifacts; do not edit manually.
 - `GetCategoryUsageData` returns `[]map[string]any` (not a typed DTO) — enriches aggregations with category names inline.
+- darwinkit (`github.com/progrium/darwinkit`) is listed in `go.mod` but is only needed on darwin; `go mod tidy` on Windows will remove it — add it back manually or run tidy on macOS.
 
 ## Recommended First Reads
 

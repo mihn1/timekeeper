@@ -19,6 +19,7 @@ func TestSqliteStorage(t *testing.T) {
 	assert.NoError(t, err)
 
 	storage := NewSqliteStorage(db)
+	t.Cleanup(func() { storage.Close() })
 
 	// Test adding and retrieving categories
 	workCategory := &models.Category{Name: "Work"}
@@ -49,6 +50,7 @@ func TestSqliteEventStoreReturnsPersistedEventsByDate(t *testing.T) {
 	assert.NoError(t, err)
 
 	storage := NewSqliteStorage(db)
+	t.Cleanup(func() { storage.Close() })
 
 	start := time.Now().UTC().Add(-2 * time.Minute)
 	end := start.Add(1 * time.Minute)

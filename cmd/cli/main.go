@@ -10,19 +10,36 @@ import (
 	"syscall"
 
 	"github.com/mihn1/timekeeper/core"
-	"github.com/mihn1/timekeeper/macos"
+	"github.com/mihn1/timekeeper/platforms"
 )
+
+func newLogger(levelStr string) *slog.Logger {
+	var level slog.Level
+	switch levelStr {
+	case "debug":
+		level = slog.LevelDebug
+	case "warn":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo
+	}
+	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
+}
 
 func main() {
 	// Define flags
-	dbType := flag.String("db", "sqlite", "Database type: 'sqlite' or 'inmem'")
+	dbType := flag.String("db", "inmem", "Database type: 'sqlite' or 'inmem'")
 	dbPath := flag.String("dbpath", "./db/timekeeper.db", "Path to SQLite database file")
 	seed := flag.Bool("seed", true, "Seed initial data")
 	seedOnly := flag.Bool("seedonly", false, "Seed initial data")
+	logLevel := flag.String("log-level", "info", "Log level: debug, info, warn, error")
 
 	flag.Parse()
 
-	logger := slog.Default()
+	logger := newLogger(*logLevel)
+	slog.SetDefault(logger)
 	var timekeeper *core.TimeKeeper
 	opts := core.TimeKeeperOptions{
 		StoreEvents: false,
@@ -43,7 +60,7 @@ func main() {
 		timekeeper = core.NewTimeKeeperSqlite(opts)
 	case "inmem":
 		logger.Info("Starting inmem Timekeeper")
-		*seedOnly = true // Always seed data for inmem
+		*seed = true
 		timekeeper = core.NewTimeKeeperInMem(opts)
 	default:
 		panic(fmt.Sprintf("Invalid database type %s", *dbType))
@@ -58,7 +75,7 @@ func main() {
 
 	defer timekeeper.Close()
 
-	observer := macos.NewObserver(timekeeper.PushEvent, true, logger)
+	observer := platforms.NewPlatformObserver(timekeeper.PushEvent, true, logger)
 	timekeeper.AddObserver(observer)
 	timekeeper.StartTracking()
 

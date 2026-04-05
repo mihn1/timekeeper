@@ -1,4 +1,7 @@
-package macos
+//go:build darwin
+// +build darwin
+
+package darwin
 
 import (
 	"log/slog"
@@ -7,7 +10,7 @@ import (
 
 	"github.com/mihn1/timekeeper/constants"
 	"github.com/mihn1/timekeeper/internal/models"
-	"github.com/mihn1/timekeeper/macos/browsers"
+	"github.com/mihn1/timekeeper/platforms/darwin/browsers"
 	"github.com/progrium/darwinkit/macos"
 	"github.com/progrium/darwinkit/macos/appkit"
 	"github.com/progrium/darwinkit/macos/foundation"
@@ -36,7 +39,7 @@ var (
 )
 
 func (o *Observer) Start() error {
-	o.logger.Info("Starting MACOS browsers observer")
+	o.logger.Info("Starting macOS observer")
 
 	if !o.isStandalone {
 		return o.startListenerInternal()
@@ -72,7 +75,7 @@ func (o *Observer) startListenerInternal() error {
 		func(notification foundation.Notification) {
 			event, pid := getEvent(notification)
 			o.registerBrowserObserver(pid, event.AppName, o.callback)
-			o.callback(event) // Push event to timekeeper in case of app activation
+			o.callback(event)
 		})
 
 	// Register for terminating an app
@@ -89,7 +92,7 @@ func (o *Observer) startListenerInternal() error {
 }
 
 func (o *Observer) Stop() error {
-	o.logger.Info("Stopping MACOS browsers observer")
+	o.logger.Info("Stopping macOS observer")
 	for browserName := range o.browserListeners {
 		o.stopBrowserObserver(browserName)
 	}

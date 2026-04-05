@@ -5,12 +5,30 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Attach to Process",
+            "type": "go",
+            "request": "attach",
+            "mode": "local",
+            "processId": 0
+        },
+        {
             "name": "Launch TimeKeeper with SQLite",
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd/main.go",
-            "args": ["--db", "sqlite"],
+            "program": "${workspaceFolder}/cmd/cli/",
+            "args": ["--db", "sqlite", "--log-level", "debug"],
+            "env": {},
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Launch TimeKeeper in-memory",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/cli/",
+            "args": ["--db", "inmem", "--log-level", "debug"],
+            "buildFlags": "-tags nosqlite",
             "env": {},
             "cwd": "${workspaceFolder}"
         }

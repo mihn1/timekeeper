@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/mihn1/timekeeper/constants"
 	"github.com/mihn1/timekeeper/core/resolvers"
 	"github.com/mihn1/timekeeper/datatypes"

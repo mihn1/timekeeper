@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { GetAppUsageData } from '../../wailsjs/go/main/App';
   import { formatTimeElapsed } from '../utils/formatters';
+  import { refreshData } from '../stores/timekeeper';
   import AppUsageChart from './AppUsageChart.svelte';
   import CategoryChart from './CategoryChart.svelte';
   
@@ -10,8 +11,8 @@
   let isLoading = true;
   let loadError = null;
 
-  // Subscribe to refresh events
-  $: if ($refreshData && selectedDate) {
+  // Reload whenever the global refresh signal or selected date changes
+  $: if ($refreshData || selectedDate) {
     loadData();
   }
 
@@ -40,10 +41,6 @@
     selectedDate = e.target.value;
     loadData();
   }
-
-  function refreshData() {
-    loadData();
-  }
 </script>
 
 <div class="dashboard">
@@ -58,9 +55,9 @@
       />
     </div>
     
-    <button 
-      class="refresh-button" 
-      on:click={refreshData}
+    <button
+      class="refresh-button"
+      on:click={loadData}
       aria-label="Refresh data"
       title="Refresh data"
     >

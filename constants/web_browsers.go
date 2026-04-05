@@ -11,7 +11,9 @@ const (
 	ALL_APPS = "All_Apps"
 
 	// AppNameChrome is the name of the Chrome application
-	GOOGLE_CHROME = "Google Chrome"
-	BRAVE         = "Brave Browser"
-	SAFARI        = "Safari"
+	GOOGLE_CHROME  = "Google Chrome"
+	MICROSOFT_EDGE = "Microsoft Edge"
+	FIREFOX        = "Firefox"
+	BRAVE          = "Brave Browser"
+	SAFARI         = "Safari"
 )

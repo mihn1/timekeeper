@@ -10,7 +10,8 @@ import (
 	"github.com/mihn1/timekeeper/core"
 	"github.com/mihn1/timekeeper/datatypes"
 	"github.com/mihn1/timekeeper/internal/models"
-	"github.com/mihn1/timekeeper/macos"
+	"github.com/mihn1/timekeeper/platforms"
+	"github.com/mihn1/timekeeper/ui/dtos"
 )
 
 // App struct
@@ -43,8 +44,8 @@ func (a *App) Startup(ctx context.Context) {
 	a.timekeeper = a.newTimeKeeperFromConfig()
 	a.seedIfNeeded()
 
-	// Set up the macOS observer
-	observer := macos.NewObserver(a.timekeeper.PushEvent, false, a.logger)
+	// Set up the platform observer
+	observer := platforms.NewPlatformObserver(a.timekeeper.PushEvent, false, a.logger)
 	a.timekeeper.AddObserver(observer)
 
 	// Start tracking

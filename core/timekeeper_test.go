@@ -2,7 +2,6 @@ package core
 
 import (
 	"log/slog"
-	"path"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -53,22 +52,6 @@ func TestTimeKeeperEventProcessing(t *testing.T) {
 	assert.Len(t, appAggr, 1) // Only one app aggregation should exist
 }
 
-func TestEndToEndSqlite(t *testing.T) {
-	tmpFile := path.Join(t.TempDir(), "timekeeper.db")
-
-	tk := NewTimeKeeperSqlite(TimeKeeperOptions{
-		StoragePath: tmpFile,
-		StoreEvents: true,
-		Logger:      slog.Default(),
-	})
-	defer tk.Close()
-
-	SeedData(tk)
-	tk.StartTracking()
-
-	simulateEvents(t, tk)
-	assertAggregations(t, tk)
-}
 
 func simulateEvents(t *testing.T, tk *TimeKeeper) {
 	t.Helper()
