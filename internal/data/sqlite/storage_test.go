@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 	"github.com/mihn1/timekeeper/datatypes"
 	"github.com/mihn1/timekeeper/internal/models"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +15,7 @@ import (
 func TestSqliteStorage(t *testing.T) {
 	// Create temp DB file
 	tmpFile := path.Join(t.TempDir(), "test.db")
-	db, err := sql.Open("sqlite3", tmpFile)
+	db, err := sql.Open("sqlite", tmpFile)
 	assert.NoError(t, err)
 
 	storage := NewSqliteStorage(db)
@@ -46,7 +46,7 @@ func TestSqliteStorage(t *testing.T) {
 
 func TestSqliteEventStoreReturnsPersistedEventsByDate(t *testing.T) {
 	tmpFile := path.Join(t.TempDir(), "events.db")
-	db, err := sql.Open("sqlite3", tmpFile)
+	db, err := sql.Open("sqlite", tmpFile)
 	assert.NoError(t, err)
 
 	storage := NewSqliteStorage(db)

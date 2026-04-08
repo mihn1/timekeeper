@@ -72,7 +72,7 @@ func NewTimeKeeperSqlite(opts TimeKeeperOptions) *TimeKeeper {
 		opts.StoragePath = "./timekeeper.db"
 	}
 
-	db, err := sql.Open("sqlite3", opts.StoragePath)
+	db, err := sql.Open("sqlite", opts.StoragePath)
 	if err != nil {
 		opts.Logger.Error("Error opening database", "error", err, "path", opts.StoragePath)
 		os.Exit(1) // Maintain fatal behavior

@@ -1,5 +1,4 @@
 <script>
-  import { onMount } from 'svelte';
   import { GetAppUsageData } from '../../wailsjs/go/main/App';
   import { formatTimeElapsed } from '../utils/formatters';
   import { refreshData } from '../stores/timekeeper';
@@ -11,14 +10,11 @@
   let isLoading = true;
   let loadError = null;
 
-  // Reload whenever the global refresh signal or selected date changes
+  // Reload whenever the global refresh signal or selected date changes.
+  // This also fires on initial render, so no separate onMount call is needed.
   $: if ($refreshData || selectedDate) {
     loadData();
   }
-
-  onMount(() => {
-    loadData();
-  });
 
   async function loadData() {
     isLoading = true;

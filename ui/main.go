@@ -1,11 +1,7 @@
 package main
 
 import (
-	"context"
 	"embed"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/menu"
@@ -22,16 +18,6 @@ func main() {
 	// Create an instance of the app structure
 	app := NewApp()
 
-	// Set up signal handling for clean shutdown
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		<-signalChan
-		println("Received shutdown signal, cleaning up resources...")
-		app.Shutdown(context.TODO())
-	}()
-
 	// Create application with options
 	err := wails.Run(&options.App{
 		Title:  "TimeKeeper",
@@ -46,12 +32,6 @@ func main() {
 		OnShutdown:       app.Shutdown,
 		Bind: []any{
 			app,
-		},
-		// Add this to handle uncaught Go errors
-		OnBeforeClose: func(ctx context.Context) bool {
-			println("Application closing, cleaning up resources...")
-			app.Shutdown(ctx)
-			return false
 		},
 	})
 

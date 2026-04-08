@@ -98,6 +98,7 @@ var (
 	procOpenProcess          = kernel32.NewProc("OpenProcess")
 	procQueryFullImageNameW  = kernel32.NewProc("QueryFullProcessImageNameW")
 	procCloseHandle          = kernel32.NewProc("CloseHandle")
+	procGetAncestor          = user32.NewProc("GetAncestor")
 	procGetMessageW          = user32.NewProc("GetMessageW")
 	procTranslateMessage     = user32.NewProc("TranslateMessage")
 	procDispatchMessageW     = user32.NewProc("DispatchMessageW")
@@ -113,6 +114,8 @@ const (
 	WINEVENT_SKIPOWNPROCESS           = 0x0002
 	PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 	WM_QUIT                           = 0x0012
+	GA_ROOT                           = 2 // GetAncestor: root in parent chain
+	GA_ROOTOWNER                      = 3 // GetAncestor: root in parent+owner chains
 )
 
 var globalObserver *Observer
@@ -232,8 +235,18 @@ func (o *Observer) handleWindowChange(appName, exePath, title string, hwnd uintp
 }
 
 func collectWindowInfo(hwnd uintptr) (appName, exePath, title string) {
-	title = getWindowTitle(hwnd)
-	pid := getWindowPID(hwnd)
+	// GA_ROOTOWNER walks both the parent and owner chains to find the
+	// ultimate top-level owning window. This correctly handles:
+	//   - Child windows (e.g. embedded controls): parent chain leads up
+	//   - Owned top-level windows (e.g. WebView2 host surfaces): owner chain leads up
+	// Using GA_ROOT (parent chain only) misses the owned-window case and
+	// can return a WebView2 or shell window instead of the real app window.
+	root, _, _ := procGetAncestor.Call(hwnd, GA_ROOTOWNER)
+	if root == 0 {
+		root = hwnd
+	}
+	title = getWindowTitle(root)
+	pid := getWindowPID(root)
 	if pid == 0 {
 		return "", "", title
 	}
@@ -242,6 +255,18 @@ func collectWindowInfo(hwnd uintptr) (appName, exePath, title string) {
 		return "", "", title
 	}
 	appName = normalizeAppName(filepath.Base(exePath))
+
+	if globalObserver != nil {
+		globalObserver.logger.Debug("collectWindowInfo",
+			"hwnd", hwnd,
+			"root", root,
+			"pid", pid,
+			"exe", exePath,
+			"app", appName,
+			"title", title,
+		)
+	}
+
 	return appName, exePath, title
 }
 

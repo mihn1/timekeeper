@@ -1,5 +1,4 @@
-<script>
-  import { onMount } from 'svelte';
+<script lang="ts">
   import { Bar } from 'svelte-chartjs';
   import { formatTimeElapsed } from '../utils/formatters';
   import { refreshData } from '../stores/timekeeper';
@@ -37,10 +36,6 @@
   $: if (date || $refreshData) {
     loadCategoryData();
   }
-
-  onMount(() => {
-    loadCategoryData();
-  });
 
   async function loadCategoryData() {
     isLoading = true;

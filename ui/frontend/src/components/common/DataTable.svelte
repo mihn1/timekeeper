@@ -112,11 +112,7 @@
             <tr class="hover-row">
               {#each columns as column}
                 <td class="px-6 py-4 whitespace-nowrap">
-                  {#if column.formatter}
-                    {@html column.formatter(row[column.key])}
-                  {:else}
-                    {row[column.key]}
-                  {/if}
+                  {column.formatter ? column.formatter(row[column.key]) : row[column.key]}
                 </td>
               {/each}
               {#if rowActions.length > 0 || actionIcon}
