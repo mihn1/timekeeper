@@ -25,6 +25,8 @@ export function GetCategory(arg1:number):Promise<dtos.CategoryDetail>;
 
 export function GetCategoryUsageData(arg1:string):Promise<Array<dtos.CategoryUsageItem>>;
 
+export function GetEventLog(arg1:string):Promise<Array<dtos.EventLogItem>>;
+
 export function GetRule(arg1:number):Promise<dtos.RuleDetail>;
 
 export function GetRules():Promise<Array<dtos.RuleListItem>>;

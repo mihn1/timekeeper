@@ -20,10 +20,14 @@
       class="cursor-pointer menu-item {$currentView === 'rules' ? 'active' : ''}" 
       on:click={() => navigate('rules')}
     >Rule Management</button>
-    <button 
-      class="cursor-pointer menu-item {$currentView === 'categories' ? 'active' : ''}" 
+    <button
+      class="cursor-pointer menu-item {$currentView === 'categories' ? 'active' : ''}"
       on:click={() => navigate('categories')}
     >Category Management</button>
+    <button
+      class="cursor-pointer menu-item {$currentView === 'events' ? 'active' : ''}"
+      on:click={() => navigate('events')}
+    >Event Log</button>
   </div>
   <div class="theme-toggle">
     <button on:click={toggleTheme} aria-label="Toggle theme">

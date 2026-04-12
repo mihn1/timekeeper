@@ -46,6 +46,10 @@ export function GetCategoryUsageData(arg1) {
   return window['go']['main']['App']['GetCategoryUsageData'](arg1);
 }
 
+export function GetEventLog(arg1) {
+  return window['go']['main']['App']['GetEventLog'](arg1);
+}
+
 export function GetRule(arg1) {
   return window['go']['main']['App']['GetRule'](arg1);
 }

@@ -188,12 +188,21 @@ func winEventCallback(hWinEventHook uintptr, event uint32, hwnd uintptr, idObjec
 	if o == nil || hwnd == 0 {
 		return 0
 	}
+
+	eventName := "FOREGROUND"
+	if event == EVENT_OBJECT_NAMECHANGE {
+		eventName = "NAMECHANGE"
+	}
+	o.logger.Debug("WinEvent raw", "event", eventName, "hwnd", hwnd, "idObject", idObject)
+
 	if event == EVENT_OBJECT_NAMECHANGE && idObject != OBJID_WINDOW {
+		o.logger.Debug("WinEvent skip: not window object", "idObject", idObject)
 		return 0
 	}
 	if event == EVENT_OBJECT_NAMECHANGE {
 		fg, _, _ := procGetForegroundWindow.Call()
 		if fg != hwnd {
+			o.logger.Debug("WinEvent skip: not foreground", "hwnd", hwnd, "fg", fg)
 			return 0
 		}
 	}

@@ -95,6 +95,30 @@ export namespace dtos {
 	        this.timeElapsed = source["timeElapsed"];
 	    }
 	}
+	export class EventLogItem {
+	    id: number;
+	    appName: string;
+	    startTime: string;
+	    endTime: string;
+	    durationSecs: number;
+	    categoryId: number;
+	    urlOrTitle: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new EventLogItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.appName = source["appName"];
+	        this.startTime = source["startTime"];
+	        this.endTime = source["endTime"];
+	        this.durationSecs = source["durationSecs"];
+	        this.categoryId = source["categoryId"];
+	        this.urlOrTitle = source["urlOrTitle"];
+	    }
+	}
 	export class RuleCreate {
 	    categoryId: number;
 	    appName: string;
