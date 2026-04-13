@@ -5,6 +5,7 @@ package windows
 
 import (
 	"log/slog"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -32,10 +33,13 @@ type Observer struct {
 	logger       *slog.Logger
 	isStandalone bool
 	urlExtractor *browsers.BrowserURLExtractor
+	ownPid       uint32
 
-	mu        sync.Mutex
-	lastApp   string
-	lastTitle string
+	mu           sync.Mutex
+	lastApp      string
+	lastTitle    string
+	isPaused     bool      // true after a lock/sleep pause marker was emitted
+	lastEmitTime time.Time // time of the last emitted real-app event
 
 	cb             uintptr
 	tid            uint32
@@ -57,6 +61,7 @@ func NewObserver(callback func(models.AppSwitchEvent), isStandalone bool, logger
 		logger:       logger,
 		isStandalone: isStandalone,
 		urlExtractor: browsers.NewBrowserURLExtractor(logger),
+		ownPid:       uint32(os.Getpid()),
 		readyCh:      make(chan struct{}),
 		doneCh:       make(chan struct{}),
 	}
@@ -99,6 +104,7 @@ var (
 	procQueryFullImageNameW  = kernel32.NewProc("QueryFullProcessImageNameW")
 	procCloseHandle          = kernel32.NewProc("CloseHandle")
 	procGetAncestor          = user32.NewProc("GetAncestor")
+	procGetClassNameW        = user32.NewProc("GetClassNameW")
 	procGetMessageW          = user32.NewProc("GetMessageW")
 	procTranslateMessage     = user32.NewProc("TranslateMessage")
 	procDispatchMessageW     = user32.NewProc("DispatchMessageW")
@@ -107,6 +113,11 @@ var (
 )
 
 const (
+	// maxIdleGap is the minimum gap between two consecutive foreground events
+	// that we treat as a sleep or hibernate period. Events within this window
+	// are assumed to be normal usage (the machine was actively used in between).
+	maxIdleGap = 5 * time.Minute
+
 	EVENT_SYSTEM_FOREGROUND           = 0x0003
 	EVENT_OBJECT_NAMECHANGE           = 0x800C
 	OBJID_WINDOW                      = 0x00000000
@@ -213,34 +224,94 @@ func winEventCallback(hWinEventHook uintptr, event uint32, hwnd uintptr, idObjec
 
 // handleWindowChange applies deduplication and fires the callback when the
 // active window changes. Extracted from winEventCallback for testability.
+//
+// It also handles two idle scenarios:
+//  1. Lock screen: lockapp/logonui/winlogon become foreground → emit SYSTEM_PAUSED
+//     marker, which closes the previous app's event at the lock time.
+//  2. Sleep/hibernate without lock: no foreground event fires during sleep, so on
+//     wake the gap between now and lastEmitTime exceeds maxIdleGap → inject a
+//     SYSTEM_PAUSED marker to close the pre-sleep period cleanly, then emit the
+//     waking app event.
+//
+// SYSTEM_PAUSED events are excluded from aggregation by the core.
 func (o *Observer) handleWindowChange(appName, exePath, title string, hwnd uintptr) {
-	if appName == "" {
+	if appName == "" || o.callback == nil {
 		return
+	}
+
+	now := time.Now().UTC()
+
+	// Map known lock-screen processes to the system pause marker.
+	if isLockScreenApp(appName) {
+		appName = constants.SYSTEM_PAUSED
+		exePath = ""
+		title = ""
 	}
 
 	o.mu.Lock()
 	same := appName == o.lastApp && title == o.lastTitle
-	if !same {
-		o.lastApp, o.lastTitle = appName, title
-	}
+	prevEmitTime := o.lastEmitTime
+	prevIsPaused := o.isPaused
 	o.mu.Unlock()
 
-	if same || o.callback == nil {
+	longGap := !prevEmitTime.IsZero() && now.Sub(prevEmitTime) > maxIdleGap
+
+	// ── Lock-screen path ─────────────────────────────────────────────────────
+	if appName == constants.SYSTEM_PAUSED {
+		if prevIsPaused {
+			return // already in paused state, don't re-emit
+		}
+		o.mu.Lock()
+		o.lastApp = constants.SYSTEM_PAUSED
+		o.lastTitle = ""
+		o.isPaused = true
+		o.lastEmitTime = now
+		o.mu.Unlock()
+		o.callback(models.AppSwitchEvent{AppName: constants.SYSTEM_PAUSED, StartTime: now})
 		return
 	}
 
-	add := map[string]string{constants.KEY_APP_DESC: exePath}
-	if title != "" {
-		add[constants.KEY_BROWSER_TITLE] = title
+	// ── Real-app path ────────────────────────────────────────────────────────
+
+	// If there was a long idle gap AND we weren't already paused (lock screen
+	// didn't fire), inject a SYSTEM_PAUSED marker just after the last real
+	// event to close out the pre-sleep period with near-zero elapsed time.
+	if longGap && !prevIsPaused {
+		o.callback(models.AppSwitchEvent{
+			AppName:   constants.SYSTEM_PAUSED,
+			StartTime: prevEmitTime.Add(time.Millisecond),
+		})
 	}
 
-	if isBrowser(appName) {
-		if url := o.urlExtractor.ExtractURLFromWindow(hwnd, appName, title); url != "" {
-			add[constants.KEY_BROWSER_URL] = url
+	// Emit the real app event if the window changed or we're recovering from idle.
+	if !same || longGap {
+		o.mu.Lock()
+		o.lastApp = appName
+		o.lastTitle = title
+		o.isPaused = false
+		o.lastEmitTime = now
+		o.mu.Unlock()
+
+		add := map[string]string{constants.KEY_APP_DESC: exePath}
+		if title != "" {
+			add[constants.KEY_BROWSER_TITLE] = title
 		}
+		if isBrowser(appName) {
+			if url := o.urlExtractor.ExtractURLFromWindow(hwnd, appName, title); url != "" {
+				add[constants.KEY_BROWSER_URL] = url
+			}
+		}
+		o.callback(models.AppSwitchEvent{AppName: appName, StartTime: now, AdditionalData: add})
 	}
+}
 
-	o.callback(models.AppSwitchEvent{AppName: appName, StartTime: time.Now().UTC(), AdditionalData: add})
+// isLockScreenApp reports whether appName corresponds to a Windows lock/logon screen process.
+func isLockScreenApp(appName string) bool {
+	switch appName {
+	case "lockapp", "logonui", "winlogon":
+		return true
+	}
+	return false
 }
 
 func collectWindowInfo(hwnd uintptr) (appName, exePath, title string) {
@@ -254,11 +325,28 @@ func collectWindowInfo(hwnd uintptr) (appName, exePath, title string) {
 	if root == 0 {
 		root = hwnd
 	}
+
+	// Skip Desktop Shell windows (explorer.exe's "Progman"/"WorkerW") that
+	// briefly become foreground at app startup. These are not real app windows.
+	cls := getWindowClassName(root)
+	if cls == "Progman" || cls == "WorkerW" {
+		return "", "", ""
+	}
+
 	title = getWindowTitle(root)
 	pid := getWindowPID(root)
 	if pid == 0 {
 		return "", "", title
 	}
+
+	// Skip windows belonging to our own process. WINEVENT_SKIPOWNPROCESS only
+	// suppresses events originating from our hook thread, not from WebView2
+	// (msedgewebview2.exe), which runs as a child process with a different PID.
+	// We check the main app PID here to handle shell/startup transients.
+	if globalObserver != nil && pid == globalObserver.ownPid {
+		return "", "", ""
+	}
+
 	exePath = getProcessImage(pid)
 	if exePath == "" {
 		return "", "", title
@@ -294,6 +382,12 @@ func normalizeAppName(base string) string {
 	default:
 		return trimExt(lower)
 	}
+}
+
+func getWindowClassName(hwnd uintptr) string {
+	buf := make([]uint16, 256)
+	procGetClassNameW.Call(hwnd, uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)))
+	return utf16ToString(buf)
 }
 
 func getWindowTitle(hwnd uintptr) string {

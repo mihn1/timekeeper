@@ -10,6 +10,10 @@ const (
 const (
 	ALL_APPS = "All_Apps"
 
+	// SYSTEM_PAUSED is a synthetic app name emitted when the machine is locked or
+	// sleeping. Events with this name are always excluded from aggregations.
+	SYSTEM_PAUSED = "system:paused"
+
 	// AppNameChrome is the name of the Chrome application
 	GOOGLE_CHROME  = "Google Chrome"
 	MICROSOFT_EDGE = "Microsoft Edge"

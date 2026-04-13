@@ -313,6 +313,13 @@ func (t *TimeKeeper) aggregateCategory(event *models.AppSwitchEvent, elapsedTime
 }
 
 func (t *TimeKeeper) getRulesForEvent(event *models.AppSwitchEvent) ([]*models.CategoryRule, error) {
+	// The SYSTEM_PAUSED marker is emitted by the platform observer to close the
+	// active tracking period cleanly when the machine is locked or sleeping.
+	// It must never accumulate time in any aggregation.
+	if event.AppName == constants.SYSTEM_PAUSED {
+		return nil, NewEventExcludedError(event.AppName, nil, "system pause marker", false)
+	}
+
 	rules, err := t.Storage.Rules().GetRulesByApp(event.AppName)
 	if err != nil {
 		return nil, err
