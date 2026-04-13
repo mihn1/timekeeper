@@ -6,6 +6,7 @@
   import DataTable from '../common/DataTable.svelte';
   import CreateRuleModal from './CreateRuleModal.svelte';
   import EditRuleModal from './EditRuleModal.svelte';
+  import RuleTestPanel from './RuleTestPanel.svelte';
   import CreateCategoryModal from '../categories/CreateCategoryModal.svelte';
   import { dtos } from '../../../wailsjs/go/models';
   import type { Column } from '../../types/table';
@@ -239,6 +240,9 @@
 <div class="p-6 max-w-6xl mx-auto">
   <h1 class="text-2xl font-bold mb-6 rule-title">Rule Management</h1>
   
+  <!-- Rule Tester -->
+  <RuleTestPanel />
+
   <!-- Action Buttons -->
   <div class="flex justify-between mb-6">
     <div class="flex gap-4">

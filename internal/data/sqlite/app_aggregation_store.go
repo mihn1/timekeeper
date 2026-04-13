@@ -116,3 +116,26 @@ func (s *AppAggregationStore) GetAppAggregationsByDate(date datatypes.DateOnly) 
 
 	return aggregations, nil
 }
+
+func (s *AppAggregationStore) GetAppAggregationsByDateRange(start, end datatypes.DateOnly) ([]*models.AppAggregation, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	rows, err := s.db.Query("SELECT app_name, date, time_elapsed, additional_data FROM "+s.tableName+" WHERE date >= ? AND date <= ?", start, end)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var aggregations []*models.AppAggregation = make([]*models.AppAggregation, 0)
+	for rows.Next() {
+		var appAggr models.AppAggregation
+		err = rows.Scan(&appAggr.AppName, &appAggr.Date, &appAggr.TimeElapsed, &appAggr.AdditionalData)
+		if err != nil {
+			return nil, err
+		}
+		aggregations = append(aggregations, &appAggr)
+	}
+
+	return aggregations, nil
+}

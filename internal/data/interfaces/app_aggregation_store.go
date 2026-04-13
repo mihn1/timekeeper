@@ -9,4 +9,5 @@ type AppAggregationStore interface {
 	AggregateAppEvent(event *models.AppSwitchEvent, elapsedTime int64) (*models.AppAggregation, error)
 	GetAppAggregations() ([]*models.AppAggregation, error)
 	GetAppAggregationsByDate(date datatypes.DateOnly) ([]*models.AppAggregation, error)
+	GetAppAggregationsByDateRange(start, end datatypes.DateOnly) ([]*models.AppAggregation, error)
 }

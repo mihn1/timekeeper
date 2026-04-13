@@ -6,6 +6,7 @@
   
   export let show = false;
   export let categories = [];
+  export let prefillAppName = '';
   
   const dispatch = createEventDispatcher();
   
@@ -15,15 +16,20 @@
     [key: string]: string;
   };
   
-  let newRule: dtos.RuleCreate = { 
-    categoryId: 0, 
-    appName: '', 
-    additionalDataKey: '', 
-    expression: '', 
-    isRegex: false, 
+  let newRule: dtos.RuleCreate = {
+    categoryId: 0,
+    appName: prefillAppName,
+    additionalDataKey: '',
+    expression: '',
+    isRegex: false,
     priority: 0,
     isExclusion: false
   };
+
+  // Sync prefill when prop changes (e.g. when modal re-opens for a different app).
+  $: if (prefillAppName && show) {
+    newRule = { ...newRule, appName: prefillAppName };
+  }
   
   let formErrors: FormErrors = {};
   
@@ -31,7 +37,7 @@
     formErrors = {};
     let isValid = true;
     
-    if (newRule.categoryId == 0) {
+    if (newRule.categoryId == 0 && !newRule.isExclusion) {
       formErrors.categoryId = 'Category ID is required';
       isValid = false;
     }

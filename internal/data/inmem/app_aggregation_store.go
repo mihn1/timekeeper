@@ -45,3 +45,13 @@ func (store *AppAggregationStore) GetAppAggregationsByDate(date datatypes.DateOn
 	}
 	return aggregations, nil
 }
+
+func (store *AppAggregationStore) GetAppAggregationsByDateRange(start, end datatypes.DateOnly) ([]*models.AppAggregation, error) {
+	var aggregations []*models.AppAggregation
+	for _, aggregation := range store.Aggregations {
+		if !aggregation.Date.Time.Before(start.Time) && !aggregation.Date.Time.After(end.Time) {
+			aggregations = append(aggregations, aggregation)
+		}
+	}
+	return aggregations, nil
+}

@@ -8,6 +8,7 @@ type InmemStorage struct {
 	appAggregationStore      interfaces.AppAggregationStore
 	categoryAggregationStore interfaces.CategoryAggregationStore
 	eventStore               interfaces.EventStore
+	goalStore                interfaces.GoalStore
 }
 
 func NewInmemStorage() *InmemStorage {
@@ -17,6 +18,7 @@ func NewInmemStorage() *InmemStorage {
 		appAggregationStore:      NewAppAggregationStore(),
 		categoryAggregationStore: NewCategoryAggregationStore(),
 		eventStore:               NewEventStore(),
+		goalStore:                NewGoalStore(),
 	}
 }
 
@@ -38,6 +40,10 @@ func (s *InmemStorage) CategoryAggregations() interfaces.CategoryAggregationStor
 
 func (s *InmemStorage) Events() interfaces.EventStore {
 	return s.eventStore
+}
+
+func (s *InmemStorage) Goals() interfaces.GoalStore {
+	return s.goalStore
 }
 
 func (s *InmemStorage) Close() error {

@@ -125,3 +125,26 @@ func (s *CategoryAggregations) GetCategoryAggregationsByDate(date datatypes.Date
 
 	return aggregations, nil
 }
+
+func (s *CategoryAggregations) GetCategoryAggregationsByDateRange(start, end datatypes.DateOnly) ([]*models.CategoryAggregation, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	rows, err := s.db.Query("SELECT category_id, date, time_elapsed FROM "+s.tableName+" WHERE date >= ? AND date <= ?", start, end)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var aggregations []*models.CategoryAggregation = make([]*models.CategoryAggregation, 0)
+	for rows.Next() {
+		aggregation := &models.CategoryAggregation{}
+		err = rows.Scan(&aggregation.CategoryId, &aggregation.Date, &aggregation.TimeElapsed)
+		if err != nil {
+			return nil, err
+		}
+		aggregations = append(aggregations, aggregation)
+	}
+
+	return aggregations, nil
+}

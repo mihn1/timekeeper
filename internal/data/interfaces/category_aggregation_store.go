@@ -10,4 +10,5 @@ type CategoryAggregationStore interface {
 	GetCategoryAggregation(categoryId models.CategoryId, date datatypes.DateOnly) (*models.CategoryAggregation, bool)
 	GetCategoryAggregations() ([]*models.CategoryAggregation, error)
 	GetCategoryAggregationsByDate(date datatypes.DateOnly) ([]*models.CategoryAggregation, error)
+	GetCategoryAggregationsByDateRange(start, end datatypes.DateOnly) ([]*models.CategoryAggregation, error)
 }

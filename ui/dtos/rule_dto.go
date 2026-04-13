@@ -85,6 +85,13 @@ func RuleDetailFromModel(rule *models.CategoryRule) *RuleDetail {
 	}
 }
 
+type RuleMatchResult struct {
+	Matched      bool        `json:"matched"`
+	CategoryId   int         `json:"categoryId"`
+	CategoryName string      `json:"categoryName"`
+	MatchedRule  *RuleDetail `json:"matchedRule"`
+}
+
 func RuleListFromModels(rules []*models.CategoryRule) []*RuleListItem {
 	result := make([]*RuleListItem, len(rules))
 	for i, rule := range rules {

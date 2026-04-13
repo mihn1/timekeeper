@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
+	"time"
 
 	"github.com/mihn1/timekeeper/core"
 	"github.com/mihn1/timekeeper/datatypes"
@@ -111,8 +113,51 @@ func (a *App) Shutdown(ctx context.Context) {
 	}
 }
 
-// Expose TimeKeeper functionality to JavaScript
-func (a *App) GetAppUsageData(dateStr string) ([]*models.AppAggregation, error) {
+// buildAppUsageItems resolves category info for each app aggregation on the given date
+// by joining through the event log.
+func (a *App) buildAppUsageItems(date datatypes.DateOnly) ([]*dtos.AppUsageItem, error) {
+	aggregations, err := a.timekeeper.Storage.AppAggregations().GetAppAggregationsByDate(date)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load app usage data: %w", err)
+	}
+
+	// Build app → categoryId map from events (last event per app wins).
+	appCategoryMap := make(map[string]models.CategoryId)
+	events, _ := a.timekeeper.Storage.Events().GetEventsByDate(date)
+	for _, ev := range events {
+		appCategoryMap[ev.AppName] = ev.CategoryId
+	}
+
+	// Build categoryId → name map.
+	categoryNameMap := make(map[models.CategoryId]string)
+	if cats, err := a.timekeeper.Storage.Categories().GetCategories(); err == nil {
+		for _, cat := range cats {
+			categoryNameMap[cat.Id] = cat.Name
+		}
+	}
+
+	result := make([]*dtos.AppUsageItem, 0, len(aggregations))
+	for _, aggr := range aggregations {
+		catId, ok := appCategoryMap[aggr.AppName]
+		if !ok {
+			catId = models.UNDEFINED
+		}
+		catName := categoryNameMap[catId]
+		if catName == "" {
+			catName = "Undefined"
+		}
+		result = append(result, &dtos.AppUsageItem{
+			AppName:      aggr.AppName,
+			TimeElapsed:  aggr.TimeElapsed,
+			CategoryId:   int(catId),
+			CategoryName: catName,
+		})
+	}
+	return result, nil
+}
+
+// GetAppUsageData returns per-app time totals for the given date, enriched with category info.
+func (a *App) GetAppUsageData(dateStr string) ([]*dtos.AppUsageItem, error) {
 	if a.timekeeper == nil {
 		return nil, fmt.Errorf("timekeeper is not initialized")
 	}
@@ -122,12 +167,27 @@ func (a *App) GetAppUsageData(dateStr string) ([]*models.AppAggregation, error) 
 		return nil, fmt.Errorf("invalid date format %q: %w", dateStr, err)
 	}
 
-	data, err := a.timekeeper.Storage.AppAggregations().GetAppAggregationsByDate(date)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load app usage data: %w", err)
+	return a.buildAppUsageItems(date)
+}
+
+// GetUncategorizedApps returns app names that resolved to the UNDEFINED category on the given date.
+func (a *App) GetUncategorizedApps(dateStr string) ([]string, error) {
+	if a.timekeeper == nil {
+		return nil, fmt.Errorf("timekeeper is not initialized")
 	}
 
-	return data, nil
+	items, err := a.GetAppUsageData(dateStr)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []string
+	for _, item := range items {
+		if models.CategoryId(item.CategoryId) == models.UNDEFINED {
+			result = append(result, item.AppName)
+		}
+	}
+	return result, nil
 }
 
 func (a *App) GetCategoryUsageData(dateStr string) ([]*dtos.CategoryUsageItem, error) {
@@ -163,6 +223,113 @@ func (a *App) GetCategoryUsageData(dateStr string) ([]*dtos.CategoryUsageItem, e
 	return result, nil
 }
 
+// GetCategoryUsageRange returns per-category daily summaries for a date range (trend chart data).
+func (a *App) GetCategoryUsageRange(startDate, endDate string) ([]*dtos.DailyCategorySummary, error) {
+	if a.timekeeper == nil {
+		return nil, fmt.Errorf("timekeeper is not initialized")
+	}
+
+	start, err := datatypes.NewDateOnlyFromStr(startDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid start date %q: %w", startDate, err)
+	}
+	end, err := datatypes.NewDateOnlyFromStr(endDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid end date %q: %w", endDate, err)
+	}
+
+	aggrs, err := a.timekeeper.Storage.CategoryAggregations().GetCategoryAggregationsByDateRange(start, end)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load category range data: %w", err)
+	}
+
+	categoryNameMap := make(map[models.CategoryId]string)
+	if cats, err := a.timekeeper.Storage.Categories().GetCategories(); err == nil {
+		for _, cat := range cats {
+			categoryNameMap[cat.Id] = cat.Name
+		}
+	}
+
+	result := make([]*dtos.DailyCategorySummary, 0, len(aggrs))
+	for _, aggr := range aggrs {
+		catName := categoryNameMap[aggr.CategoryId]
+		if catName == "" {
+			catName = "Undefined"
+		}
+		result = append(result, &dtos.DailyCategorySummary{
+			Date:         aggr.Date.String(),
+			CategoryId:   int(aggr.CategoryId),
+			CategoryName: catName,
+			TimeElapsed:  aggr.TimeElapsed,
+		})
+	}
+
+	// Sort by date ascending.
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Date < result[j].Date
+	})
+
+	return result, nil
+}
+
+// GetActivityCalendar returns daily activity totals for the heatmap calendar.
+func (a *App) GetActivityCalendar(year int) ([]*dtos.DayActivity, error) {
+	if a.timekeeper == nil {
+		return nil, fmt.Errorf("timekeeper is not initialized")
+	}
+
+	start := datatypes.NewDateOnly(time.Date(year, time.January, 1, 0, 0, 0, 0, time.UTC))
+	end := datatypes.NewDateOnly(time.Date(year, time.December, 31, 0, 0, 0, 0, time.UTC))
+
+	aggrs, err := a.timekeeper.Storage.CategoryAggregations().GetCategoryAggregationsByDateRange(start, end)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load calendar data: %w", err)
+	}
+
+	// Group by date: sum total ms, track max-time category per day (excluding EXCLUDED).
+	type dayStats struct {
+		totalMs       int64
+		catTimes      map[models.CategoryId]int64
+	}
+	byDate := make(map[string]*dayStats)
+
+	for _, aggr := range aggrs {
+		dateStr := aggr.Date.String()
+		ds, ok := byDate[dateStr]
+		if !ok {
+			ds = &dayStats{catTimes: make(map[models.CategoryId]int64)}
+			byDate[dateStr] = ds
+		}
+		ds.totalMs += aggr.TimeElapsed
+		if aggr.CategoryId != models.EXCLUDED {
+			ds.catTimes[aggr.CategoryId] += aggr.TimeElapsed
+		}
+	}
+
+	result := make([]*dtos.DayActivity, 0, len(byDate))
+	for dateStr, ds := range byDate {
+		topCatId := int(models.UNDEFINED)
+		var topMs int64
+		for catId, ms := range ds.catTimes {
+			if ms > topMs {
+				topMs = ms
+				topCatId = int(catId)
+			}
+		}
+		result = append(result, &dtos.DayActivity{
+			Date:          dateStr,
+			TotalMs:       ds.totalMs,
+			TopCategoryId: topCatId,
+		})
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Date < result[j].Date
+	})
+
+	return result, nil
+}
+
 func (a *App) EnableTracking() {
 	if a.timekeeper != nil && !a.timekeeper.IsEnabled() {
 		a.logger.Info("Enabling TimeKeeper tracking")
@@ -189,5 +356,3 @@ func (a *App) ForceCleanup() {
 	a.logger.Info("Force cleaning up resources...")
 	a.Shutdown(a.ctx)
 }
-
-// Add more methods to expose TimeKeeper functionality...

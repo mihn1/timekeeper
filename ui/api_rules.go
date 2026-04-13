@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
+	"github.com/mihn1/timekeeper/constants"
+	"github.com/mihn1/timekeeper/core/resolvers"
 	"github.com/mihn1/timekeeper/internal/models"
 	"github.com/mihn1/timekeeper/ui/dtos"
 )
@@ -39,7 +42,7 @@ func (a *App) AddRule(ruledtos *dtos.RuleCreate) error {
 		return fmt.Errorf("rule app name is required")
 	}
 
-	if ruledtos.CategoryID <= 0 {
+	if ruledtos.CategoryID <= 0 && !ruledtos.IsExclusion {
 		return fmt.Errorf("rule categoryId must be a positive integer")
 	}
 
@@ -62,7 +65,7 @@ func (a *App) UpdateRule(ruleId int, ruledtos *dtos.RuleUpdate) error {
 		return fmt.Errorf("rule app name is required")
 	}
 
-	if ruledtos.CategoryID <= 0 {
+	if ruledtos.CategoryID <= 0 && !ruledtos.IsExclusion {
 		return fmt.Errorf("rule categoryId must be a positive integer")
 	}
 
@@ -99,4 +102,56 @@ func (a *App) DeleteRule(ruleId int) error {
 	}
 
 	return err
+}
+
+// TestRuleMatch simulates rule resolution for a given app name and optional additional data.
+// additionalDataKey and value correspond to the key and value in the event's AdditionalData map
+// (e.g. key="url", value="https://github.com/...").
+func (a *App) TestRuleMatch(appName, additionalDataKey, value string) (*dtos.RuleMatchResult, error) {
+	if a.timekeeper == nil {
+		return nil, fmt.Errorf("timekeeper is not initialized")
+	}
+
+	event := &models.AppSwitchEvent{AppName: appName}
+	if additionalDataKey != "" && value != "" {
+		event.AdditionalData = map[string]string{additionalDataKey: value}
+	}
+
+	appRules, _ := a.timekeeper.Storage.Rules().GetRulesByApp(appName)
+	globalRules, _ := a.timekeeper.Storage.Rules().GetRulesByApp(constants.ALL_APPS)
+	allRules := append(appRules, globalRules...)
+	sort.Slice(allRules, func(i, j int) bool {
+		return allRules[i].Priority > allRules[j].Priority
+	})
+
+	resolver := resolvers.NewDefaultCategoryResolver(
+		a.timekeeper.Storage.Rules(),
+		a.timekeeper.Storage.Categories(),
+	)
+
+	catId, err := resolver.ResolveCategory(event, allRules)
+	if err != nil {
+		return nil, err
+	}
+
+	var matchedRule *dtos.RuleDetail
+	for _, rule := range allRules {
+		match, err := rule.IsMatch(event)
+		if err == nil && match {
+			matchedRule = dtos.RuleDetailFromModel(rule)
+			break
+		}
+	}
+
+	catName := "Undefined"
+	if cat, err := a.timekeeper.Storage.Categories().GetCategory(catId); err == nil {
+		catName = cat.Name
+	}
+
+	return &dtos.RuleMatchResult{
+		Matched:      matchedRule != nil,
+		CategoryId:   int(catId),
+		CategoryName: catName,
+		MatchedRule:  matchedRule,
+	}, nil
 }

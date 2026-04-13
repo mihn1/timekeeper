@@ -51,3 +51,13 @@ func (store *CategoryAggregationStore) GetCategoryAggregationsByDate(date dataty
 	}
 	return aggregations, nil
 }
+
+func (store *CategoryAggregationStore) GetCategoryAggregationsByDateRange(start, end datatypes.DateOnly) ([]*models.CategoryAggregation, error) {
+	var aggregations []*models.CategoryAggregation
+	for _, aggregation := range store.Aggregations {
+		if !aggregation.Date.Time.Before(start.Time) && !aggregation.Date.Time.After(end.Time) {
+			aggregations = append(aggregations, aggregation)
+		}
+	}
+	return aggregations, nil
+}

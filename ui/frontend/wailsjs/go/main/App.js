@@ -14,6 +14,10 @@ export function DeleteCategory(arg1) {
   return window['go']['main']['App']['DeleteCategory'](arg1);
 }
 
+export function DeleteGoal(arg1) {
+  return window['go']['main']['App']['DeleteGoal'](arg1);
+}
+
 export function DeleteRule(arg1) {
   return window['go']['main']['App']['DeleteRule'](arg1);
 }
@@ -28,6 +32,10 @@ export function EnableTracking() {
 
 export function ForceCleanup() {
   return window['go']['main']['App']['ForceCleanup']();
+}
+
+export function GetActivityCalendar(arg1) {
+  return window['go']['main']['App']['GetActivityCalendar'](arg1);
 }
 
 export function GetAppUsageData(arg1) {
@@ -46,8 +54,16 @@ export function GetCategoryUsageData(arg1) {
   return window['go']['main']['App']['GetCategoryUsageData'](arg1);
 }
 
+export function GetCategoryUsageRange(arg1, arg2) {
+  return window['go']['main']['App']['GetCategoryUsageRange'](arg1, arg2);
+}
+
 export function GetEventLog(arg1) {
   return window['go']['main']['App']['GetEventLog'](arg1);
+}
+
+export function GetGoals() {
+  return window['go']['main']['App']['GetGoals']();
 }
 
 export function GetRule(arg1) {
@@ -58,8 +74,20 @@ export function GetRules() {
   return window['go']['main']['App']['GetRules']();
 }
 
+export function GetUncategorizedApps(arg1) {
+  return window['go']['main']['App']['GetUncategorizedApps'](arg1);
+}
+
 export function IsTrackingEnabled() {
   return window['go']['main']['App']['IsTrackingEnabled']();
+}
+
+export function SetGoal(arg1, arg2) {
+  return window['go']['main']['App']['SetGoal'](arg1, arg2);
+}
+
+export function TestRuleMatch(arg1, arg2, arg3) {
+  return window['go']['main']['App']['TestRuleMatch'](arg1, arg2, arg3);
 }
 
 export function UpdateCategory(arg1, arg2) {

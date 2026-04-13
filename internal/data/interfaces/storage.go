@@ -6,5 +6,6 @@ type Storage interface {
 	AppAggregations() AppAggregationStore
 	CategoryAggregations() CategoryAggregationStore
 	Events() EventStore
+	Goals() GoalStore
 	Close() error
 }
