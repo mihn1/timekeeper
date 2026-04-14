@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"sync"
+	"time"
 
 	"github.com/mihn1/timekeeper/datatypes"
 	"github.com/mihn1/timekeeper/internal/models"
@@ -61,6 +62,22 @@ func (s *EventStore) AddEvent(event *models.AppSwitchEvent) error {
 	return err
 }
 
+func (s *EventStore) GetEventsByTimeRange(start, end time.Time) ([]*models.AppSwitchEvent, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	rows, err := s.db.Query(
+		"SELECT id, category_id, app_name, additional_data, start_time, end_time FROM "+s.tableName+
+			" WHERE start_time >= ? AND start_time < ? ORDER BY start_time",
+		start.UTC(), end.UTC(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanEventRows(rows)
+}
+
 func (s *EventStore) GetEventsByDate(date datatypes.DateOnly) ([]*models.AppSwitchEvent, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -70,12 +87,15 @@ func (s *EventStore) GetEventsByDate(date datatypes.DateOnly) ([]*models.AppSwit
 		return nil, err
 	}
 	defer rows.Close()
+	return scanEventRows(rows)
+}
 
+func scanEventRows(rows *sql.Rows) ([]*models.AppSwitchEvent, error) {
 	var events []*models.AppSwitchEvent
 	for rows.Next() {
 		var event models.AppSwitchEvent
 		var rawData string
-		err = rows.Scan(&event.Id, &event.CategoryId, &event.AppName, &rawData, &event.StartTime, &event.EndTime)
+		err := rows.Scan(&event.Id, &event.CategoryId, &event.AppName, &rawData, &event.StartTime, &event.EndTime)
 		if err != nil {
 			return nil, err
 		}

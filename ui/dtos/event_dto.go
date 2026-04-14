@@ -1,6 +1,8 @@
 package dtos
 
 import (
+	"time"
+
 	"github.com/mihn1/timekeeper/constants"
 	"github.com/mihn1/timekeeper/internal/models"
 )
@@ -8,14 +10,18 @@ import (
 type EventLogItem struct {
 	ID           int    `json:"id"`
 	AppName      string `json:"appName"`
-	StartTime    string `json:"startTime"`   // "15:04:05"
+	StartTime    string `json:"startTime"`   // "15:04:05" in the user's timezone
 	EndTime      string `json:"endTime"`     // "15:04:05" or "—"
 	DurationSecs int64  `json:"durationSecs"`
 	CategoryID   int    `json:"categoryId"`
-	URLOrTitle   string `json:"urlOrTitle"`  // url if present, else title, else ""
+	URLOrTitle   string `json:"urlOrTitle"` // url if present, else title, else ""
 }
 
-func EventLogItemFromModel(e *models.AppSwitchEvent) *EventLogItem {
+func EventLogItemFromModelInLoc(e *models.AppSwitchEvent, loc *time.Location) *EventLogItem {
+	if loc == nil {
+		loc = time.UTC
+	}
+
 	url, title := "", ""
 	if e.AdditionalData != nil {
 		url = e.AdditionalData[constants.KEY_BROWSER_URL]
@@ -25,7 +31,7 @@ func EventLogItemFromModel(e *models.AppSwitchEvent) *EventLogItem {
 	endTime := "—"
 	var durationSecs int64
 	if !e.EndTime.IsZero() {
-		endTime = e.EndTime.Format("15:04:05")
+		endTime = e.EndTime.In(loc).Format("15:04:05")
 		durationSecs = int64(e.EndTime.Sub(e.StartTime).Seconds())
 	}
 
@@ -37,7 +43,7 @@ func EventLogItemFromModel(e *models.AppSwitchEvent) *EventLogItem {
 	return &EventLogItem{
 		ID:           int(e.Id),
 		AppName:      e.AppName,
-		StartTime:    e.StartTime.Format("15:04:05"),
+		StartTime:    e.StartTime.In(loc).Format("15:04:05"),
 		EndTime:      endTime,
 		DurationSecs: durationSecs,
 		CategoryID:   int(e.CategoryId),
@@ -45,10 +51,10 @@ func EventLogItemFromModel(e *models.AppSwitchEvent) *EventLogItem {
 	}
 }
 
-func EventLogFromModels(events []*models.AppSwitchEvent) []*EventLogItem {
+func EventLogFromModels(events []*models.AppSwitchEvent, loc *time.Location) []*EventLogItem {
 	result := make([]*EventLogItem, len(events))
 	for i, e := range events {
-		result[i] = EventLogItemFromModel(e)
+		result[i] = EventLogItemFromModelInLoc(e, loc)
 	}
 	return result
 }

@@ -6,14 +6,19 @@ import (
 	"github.com/mihn1/timekeeper/internal/models"
 )
 
+type goalKey struct {
+	CategoryId models.CategoryId
+	GoalType   models.GoalType
+}
+
 type GoalStore struct {
 	mu    sync.RWMutex
-	goals map[models.CategoryId]*models.CategoryGoal
+	goals map[goalKey]*models.CategoryGoal
 }
 
 func NewGoalStore() *GoalStore {
 	return &GoalStore{
-		goals: make(map[models.CategoryId]*models.CategoryGoal),
+		goals: make(map[goalKey]*models.CategoryGoal),
 	}
 }
 
@@ -28,22 +33,24 @@ func (s *GoalStore) GetGoals() ([]*models.CategoryGoal, error) {
 	return result, nil
 }
 
-func (s *GoalStore) SetGoal(categoryId models.CategoryId, targetMs int64) error {
+func (s *GoalStore) SetGoal(categoryId models.CategoryId, goalType models.GoalType, targetMs int64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.goals[categoryId] = &models.CategoryGoal{
-		CategoryId:    categoryId,
-		DailyTargetMs: targetMs,
-		Enabled:       true,
+	key := goalKey{CategoryId: categoryId, GoalType: goalType}
+	s.goals[key] = &models.CategoryGoal{
+		CategoryId: categoryId,
+		GoalType:   goalType,
+		TargetMs:   targetMs,
+		Enabled:    true,
 	}
 	return nil
 }
 
-func (s *GoalStore) DeleteGoal(categoryId models.CategoryId) error {
+func (s *GoalStore) DeleteGoal(categoryId models.CategoryId, goalType models.GoalType) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	delete(s.goals, categoryId)
+	delete(s.goals, goalKey{CategoryId: categoryId, GoalType: goalType})
 	return nil
 }

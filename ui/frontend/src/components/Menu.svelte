@@ -6,38 +6,34 @@
   }
 </script>
 
-<script>
-  import { theme, toggleTheme } from '../stores/theme';
-</script>
-
 <nav class="menu">
   <div class="menu-items">
-    <button 
-      class="cursor-pointer menu-item {$currentView === 'dashboard' ? 'active' : ''}" 
+    <button
+      class="cursor-pointer menu-item {$currentView === 'dashboard' ? 'active' : ''}"
       on:click={() => navigate('dashboard')}
     >Dashboard</button>
-    <button 
-      class="cursor-pointer menu-item {$currentView === 'rules' ? 'active' : ''}" 
+    <button
+      class="cursor-pointer menu-item {$currentView === 'rules' ? 'active' : ''}"
       on:click={() => navigate('rules')}
-    >Rule Management</button>
+    >Rules</button>
     <button
       class="cursor-pointer menu-item {$currentView === 'categories' ? 'active' : ''}"
       on:click={() => navigate('categories')}
-    >Category Management</button>
+    >Categories</button>
     <button
       class="cursor-pointer menu-item {$currentView === 'events' ? 'active' : ''}"
       on:click={() => navigate('events')}
     >Event Log</button>
   </div>
-  <div class="theme-toggle">
-    <button on:click={toggleTheme} aria-label="Toggle theme">
-      {#if $theme === 'light'}
-        🌙 <!-- Moon emoji for dark mode -->
-      {:else}
-        ☀️ <!-- Sun emoji for light mode -->
-      {/if}
-    </button>
-  </div>
+
+  <button
+    class="cursor-pointer menu-item prefs-btn {$currentView === 'preferences' ? 'active' : ''}"
+    on:click={() => navigate('preferences')}
+    title="Preferences"
+    aria-label="Preferences"
+  >
+    ⚙ Preferences
+  </button>
 </nav>
 
 <style>
@@ -55,16 +51,6 @@
     gap: 1rem;
   }
 
-  .theme-toggle button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 50%;
-    background-color: var(--theme-toggle-bg);
-  }
-
   button {
     padding: 0.5rem 1rem;
     border: none;
@@ -78,13 +64,12 @@
   button:hover {
     background-color: var(--button-hover-bg-color);
   }
-  
-  /* Active menu item styling */
+
   .menu-item.active {
     background-color: var(--button-hover-bg-color);
     position: relative;
   }
-  
+
   .menu-item.active::after {
     content: '';
     position: absolute;
@@ -93,5 +78,9 @@
     width: 100%;
     height: 3px;
     background-color: var(--primary-color);
+  }
+
+  .prefs-btn {
+    font-size: 0.875rem;
   }
 </style>

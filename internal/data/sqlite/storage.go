@@ -15,6 +15,7 @@ type SqliteStorage struct {
 	categoryAggregationStore interfaces.CategoryAggregationStore
 	eventStore               interfaces.EventStore
 	goalStore                interfaces.GoalStore
+	preferencesStore         interfaces.PreferencesStore
 }
 
 func NewSqliteStorage(db *sql.DB) *SqliteStorage {
@@ -27,6 +28,7 @@ func NewSqliteStorage(db *sql.DB) *SqliteStorage {
 		categoryAggregationStore: NewCategoryAggregationStore(db, mu, "category_aggregations"),
 		eventStore:               NewEventStore(db, mu, "events"),
 		goalStore:                NewGoalStore(db, mu, "category_goals"),
+		preferencesStore:         NewPreferencesStore(db, mu, "user_preferences"),
 	}
 }
 
@@ -52,6 +54,10 @@ func (s *SqliteStorage) Events() interfaces.EventStore {
 
 func (s *SqliteStorage) Goals() interfaces.GoalStore {
 	return s.goalStore
+}
+
+func (s *SqliteStorage) Preferences() interfaces.PreferencesStore {
+	return s.preferencesStore
 }
 
 func (s *SqliteStorage) Close() error {

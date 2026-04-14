@@ -66,6 +66,10 @@ export function GetGoals() {
   return window['go']['main']['App']['GetGoals']();
 }
 
+export function GetPreferences() {
+  return window['go']['main']['App']['GetPreferences']();
+}
+
 export function GetRule(arg1) {
   return window['go']['main']['App']['GetRule'](arg1);
 }
@@ -80,6 +84,10 @@ export function GetUncategorizedApps(arg1) {
 
 export function IsTrackingEnabled() {
   return window['go']['main']['App']['IsTrackingEnabled']();
+}
+
+export function SavePreferences(arg1) {
+  return window['go']['main']['App']['SavePreferences'](arg1);
 }
 
 export function SetGoal(arg1, arg2) {

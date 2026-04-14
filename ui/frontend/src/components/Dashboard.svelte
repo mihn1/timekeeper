@@ -10,6 +10,8 @@
   } from '../../wailsjs/go/main/App';
   import { formatTimeElapsed } from '../utils/formatters';
   import { refreshData } from '../stores/timekeeper';
+  import { timezone } from '../stores/preferences.js';
+  import { todayInTz, shiftDateStr, formatDateDisplay } from '../utils/dateUtils.js';
   import AppUsageChart from './AppUsageChart.svelte';
   import CategoryChart from './CategoryChart.svelte';
   import DaySummaryBar from './DaySummaryBar.svelte';
@@ -22,17 +24,13 @@
   import HeatmapCalendar from './HeatmapCalendar.svelte';
   import CreateRuleModal from './rules/CreateRuleModal.svelte';
 
-  function localDateStr(d = new Date()) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  }
-
-  const today = localDateStr();
+  // today is reactive: if the user changes timezone in Preferences, it updates.
+  // selectedDate must be initialized directly from $timezone (not from `today`)
+  // because reactive declarations haven't run yet at variable initialization time.
+  $: today = todayInTz($timezone);
+  let selectedDate = todayInTz($timezone);
 
   // ── State ─────────────────────────────────────────────────────────────────
-  let selectedDate = today;
   let viewMode = 'day'; // 'day' | '7d' | '14d' | '30d'
   let minDurationMs = 0;
   let selectedCategoryFilter = null;
@@ -140,19 +138,8 @@
   }
 
   // ── Date navigation ───────────────────────────────────────────────────────
-  function shiftDateStr(dateStr, days) {
-    const d = new Date(dateStr + 'T00:00:00');
-    d.setDate(d.getDate() + days);
-    return localDateStr(d);
-  }
-
   function shiftDate(days) { selectedDate = shiftDateStr(selectedDate, days); }
   function goToday() { selectedDate = today; }
-
-  function formatDisplayDate(dateStr) {
-    const d = new Date(dateStr + 'T00:00:00');
-    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-  }
 
   // ── UI handlers ───────────────────────────────────────────────────────────
   function handleCategoryFilter(e) {
@@ -186,7 +173,7 @@
         />
       {:else}
         <button class="date-display" on:click={() => showDateInput = true} title="Click to pick a date">
-          {formatDisplayDate(selectedDate)}
+          {formatDateDisplay(selectedDate, $timezone)}
         </button>
       {/if}
 

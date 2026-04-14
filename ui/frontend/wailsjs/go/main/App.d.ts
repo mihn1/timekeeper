@@ -34,6 +34,8 @@ export function GetEventLog(arg1:string):Promise<Array<dtos.EventLogItem>>;
 
 export function GetGoals():Promise<Array<dtos.GoalItem>>;
 
+export function GetPreferences():Promise<dtos.PreferencesDto>;
+
 export function GetRule(arg1:number):Promise<dtos.RuleDetail>;
 
 export function GetRules():Promise<Array<dtos.RuleListItem>>;
@@ -41,6 +43,8 @@ export function GetRules():Promise<Array<dtos.RuleListItem>>;
 export function GetUncategorizedApps(arg1:string):Promise<Array<string>>;
 
 export function IsTrackingEnabled():Promise<boolean>;
+
+export function SavePreferences(arg1:dtos.PreferencesDto):Promise<void>;
 
 export function SetGoal(arg1:number,arg2:number):Promise<void>;
 

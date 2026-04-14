@@ -2,11 +2,13 @@
   import { onMount } from 'svelte';
   import { GetEventLog, GetCategories } from '../../../wailsjs/go/main/App';
   import { refreshData } from '../../stores/timekeeper';
+  import { timezone } from '../../stores/preferences.js';
+  import { todayInTz } from '../../utils/dateUtils.js';
   import DataTable from '../common/DataTable.svelte';
   import { dtos } from '../../../wailsjs/go/models';
   import type { Column } from '../../types/table';
 
-  let selectedDate: string = new Date().toISOString().split('T')[0];
+  let selectedDate: string = todayInTz($timezone);
   let events: dtos.EventLogItem[] = [];
   let categories: dtos.CategoryListItem[] = [];
   let isLoading = true;

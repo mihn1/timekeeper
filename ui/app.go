@@ -7,11 +7,13 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/mihn1/timekeeper/core"
 	"github.com/mihn1/timekeeper/datatypes"
 	"github.com/mihn1/timekeeper/internal/models"
+	"github.com/mihn1/timekeeper/internal/tzutil"
 	"github.com/mihn1/timekeeper/platforms"
 	"github.com/mihn1/timekeeper/ui/dtos"
 )
@@ -22,6 +24,9 @@ type App struct {
 	timekeeper *core.TimeKeeper
 	logger     *slog.Logger
 	config     AppConfig
+
+	prefsMu sync.RWMutex
+	prefs   *models.UserPreferences
 }
 
 // NewApp creates a new App application struct
@@ -45,6 +50,14 @@ func (a *App) Startup(ctx context.Context) {
 
 	a.timekeeper = a.newTimeKeeperFromConfig()
 	a.seedIfNeeded()
+
+	// Load user preferences from storage.
+	if prefs, err := a.timekeeper.Storage.Preferences().GetPreferences(); err == nil {
+		a.prefs = prefs
+	} else {
+		a.logger.Warn("Failed to load preferences, using defaults", "error", err)
+		a.prefs = models.DefaultPreferences()
+	}
 
 	// Set up the platform observer
 	observer := platforms.NewPlatformObserver(a.timekeeper.PushEvent, false, a.logger)
@@ -113,36 +126,72 @@ func (a *App) Shutdown(ctx context.Context) {
 	}
 }
 
-// buildAppUsageItems resolves category info for each app aggregation on the given date
-// by joining through the event log.
-func (a *App) buildAppUsageItems(date datatypes.DateOnly) ([]*dtos.AppUsageItem, error) {
+// getTimezone returns the user's configured IANA timezone string.
+func (a *App) getTimezone() string {
+	a.prefsMu.RLock()
+	defer a.prefsMu.RUnlock()
+	if a.prefs != nil && a.prefs.Timezone != "" {
+		return a.prefs.Timezone
+	}
+	return "UTC"
+}
+
+// categoryNameMap returns a map of CategoryId → display name.
+func (a *App) categoryNameMap() map[models.CategoryId]string {
+	m := make(map[models.CategoryId]string)
+	if cats, err := a.timekeeper.Storage.Categories().GetCategories(); err == nil {
+		for _, cat := range cats {
+			m[cat.Id] = cat.Name
+		}
+	}
+	return m
+}
+
+// buildAppUsageItemsFromEvents aggregates per-app time from raw events.
+func (a *App) buildAppUsageItemsFromEvents(events []*models.AppSwitchEvent) ([]*dtos.AppUsageItem, error) {
+	appTotals := tzutil.AggregateEventsByApp(events)
+	appCats := tzutil.AppCategoryMap(events)
+	catNames := a.categoryNameMap()
+
+	result := make([]*dtos.AppUsageItem, 0, len(appTotals))
+	for appName, ms := range appTotals {
+		catId := appCats[appName]
+		catName := catNames[catId]
+		if catName == "" {
+			catName = "Undefined"
+		}
+		result = append(result, &dtos.AppUsageItem{
+			AppName:      appName,
+			TimeElapsed:  ms,
+			CategoryId:   int(catId),
+			CategoryName: catName,
+		})
+	}
+	return result, nil
+}
+
+// buildAppUsageItemsFromAggr falls back to aggregation tables (UTC-date-keyed).
+// Used in inmem mode where raw events are not persisted.
+func (a *App) buildAppUsageItemsFromAggr(date datatypes.DateOnly) ([]*dtos.AppUsageItem, error) {
 	aggregations, err := a.timekeeper.Storage.AppAggregations().GetAppAggregationsByDate(date)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load app usage data: %w", err)
 	}
 
-	// Build app → categoryId map from events (last event per app wins).
-	appCategoryMap := make(map[string]models.CategoryId)
+	appCatMap := make(map[string]models.CategoryId)
 	events, _ := a.timekeeper.Storage.Events().GetEventsByDate(date)
 	for _, ev := range events {
-		appCategoryMap[ev.AppName] = ev.CategoryId
+		appCatMap[ev.AppName] = ev.CategoryId
 	}
 
-	// Build categoryId → name map.
-	categoryNameMap := make(map[models.CategoryId]string)
-	if cats, err := a.timekeeper.Storage.Categories().GetCategories(); err == nil {
-		for _, cat := range cats {
-			categoryNameMap[cat.Id] = cat.Name
-		}
-	}
-
+	catNames := a.categoryNameMap()
 	result := make([]*dtos.AppUsageItem, 0, len(aggregations))
 	for _, aggr := range aggregations {
-		catId, ok := appCategoryMap[aggr.AppName]
+		catId, ok := appCatMap[aggr.AppName]
 		if !ok {
 			catId = models.UNDEFINED
 		}
-		catName := categoryNameMap[catId]
+		catName := catNames[catId]
 		if catName == "" {
 			catName = "Undefined"
 		}
@@ -156,18 +205,30 @@ func (a *App) buildAppUsageItems(date datatypes.DateOnly) ([]*dtos.AppUsageItem,
 	return result, nil
 }
 
-// GetAppUsageData returns per-app time totals for the given date, enriched with category info.
+// GetAppUsageData returns per-app time totals for the given local date, enriched with category info.
+// Uses the user's timezone preference to compute the correct UTC day window.
 func (a *App) GetAppUsageData(dateStr string) ([]*dtos.AppUsageItem, error) {
 	if a.timekeeper == nil {
 		return nil, fmt.Errorf("timekeeper is not initialized")
 	}
 
-	date, err := datatypes.NewDateOnlyFromStr(dateStr)
+	tz := a.getTimezone()
+	start, end, err := tzutil.LocalDayToUTCRange(dateStr, tz)
 	if err != nil {
-		return nil, fmt.Errorf("invalid date format %q: %w", dateStr, err)
+		return nil, fmt.Errorf("invalid date %q: %w", dateStr, err)
 	}
 
-	return a.buildAppUsageItems(date)
+	events, qErr := a.timekeeper.Storage.Events().GetEventsByTimeRange(start, end)
+	if qErr == nil && len(events) > 0 {
+		return a.buildAppUsageItemsFromEvents(events)
+	}
+
+	// Fall back to aggregation tables (inmem mode or first-run before events are stored).
+	date, parseErr := datatypes.NewDateOnlyFromStr(dateStr)
+	if parseErr != nil {
+		return nil, fmt.Errorf("invalid date %q: %w", dateStr, parseErr)
+	}
+	return a.buildAppUsageItemsFromAggr(date)
 }
 
 // GetUncategorizedApps returns app names that resolved to the UNDEFINED category on the given date.
@@ -195,11 +256,36 @@ func (a *App) GetCategoryUsageData(dateStr string) ([]*dtos.CategoryUsageItem, e
 		return nil, fmt.Errorf("timekeeper is not initialized")
 	}
 
-	date, err := datatypes.NewDateOnlyFromStr(dateStr)
-	if err != nil {
-		return nil, fmt.Errorf("invalid date format %q: %w", dateStr, err)
+	tz := a.getTimezone()
+	catNames := a.categoryNameMap()
+
+	// Try timezone-accurate aggregation from raw events first.
+	start, end, err := tzutil.LocalDayToUTCRange(dateStr, tz)
+	if err == nil {
+		events, qErr := a.timekeeper.Storage.Events().GetEventsByTimeRange(start, end)
+		if qErr == nil && len(events) > 0 {
+			catTotals := tzutil.AggregateEventsByCategory(events)
+			result := make([]*dtos.CategoryUsageItem, 0, len(catTotals))
+			for catId, ms := range catTotals {
+				name := catNames[catId]
+				if name == "" {
+					name = "Undefined"
+				}
+				result = append(result, &dtos.CategoryUsageItem{
+					Id:          int(catId),
+					Name:        name,
+					TimeElapsed: ms,
+				})
+			}
+			return result, nil
+		}
 	}
 
+	// Fall back to pre-computed aggregation table.
+	date, parseErr := datatypes.NewDateOnlyFromStr(dateStr)
+	if parseErr != nil {
+		return nil, fmt.Errorf("invalid date %q: %w", dateStr, parseErr)
+	}
 	data, err := a.timekeeper.Storage.CategoryAggregations().GetCategoryAggregationsByDate(date)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load category usage data: %w", err)
@@ -207,19 +293,16 @@ func (a *App) GetCategoryUsageData(dateStr string) ([]*dtos.CategoryUsageItem, e
 
 	result := make([]*dtos.CategoryUsageItem, 0, len(data))
 	for _, catAggr := range data {
-		cat, err := a.timekeeper.Storage.Categories().GetCategory(catAggr.CategoryId)
-		if err != nil {
-			a.logger.Warn("Skipping category usage row due to missing category", "categoryId", catAggr.CategoryId, "error", err)
-			continue
+		name := catNames[catAggr.CategoryId]
+		if name == "" {
+			name = "Undefined"
 		}
-
 		result = append(result, &dtos.CategoryUsageItem{
 			Id:          int(catAggr.CategoryId),
-			Name:        cat.Name,
+			Name:        name,
 			TimeElapsed: catAggr.TimeElapsed,
 		})
 	}
-
 	return result, nil
 }
 

@@ -26,11 +26,14 @@ func (e *EventExcludedError) Error() string {
 }
 
 func NewEventExcludedError(appName string, rule *models.CategoryRule, description string, logInfo bool) *EventExcludedError {
-	return &EventExcludedError{
+	e := &EventExcludedError{
 		AppName:     appName,
-		RuleId:      rule.RuleId,
-		Expression:  rule.Expression,
 		Description: description,
 		LogInfo:     logInfo,
 	}
+	if rule != nil {
+		e.RuleId = rule.RuleId
+		e.Expression = rule.Expression
+	}
+	return e
 }

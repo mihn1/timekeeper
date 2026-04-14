@@ -7,5 +7,6 @@ type Storage interface {
 	CategoryAggregations() CategoryAggregationStore
 	Events() EventStore
 	Goals() GoalStore
+	Preferences() PreferencesStore
 	Close() error
 }

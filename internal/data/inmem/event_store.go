@@ -1,6 +1,8 @@
 package inmem
 
 import (
+	"time"
+
 	"github.com/mihn1/timekeeper/datatypes"
 	"github.com/mihn1/timekeeper/internal/models"
 )
@@ -26,4 +28,16 @@ func (s *EventStore) AddEvent(event *models.AppSwitchEvent) error {
 
 func (s *EventStore) GetEventsByDate(date datatypes.DateOnly) ([]*models.AppSwitchEvent, error) {
 	return s.events[date.String()], nil
+}
+
+func (s *EventStore) GetEventsByTimeRange(start, end time.Time) ([]*models.AppSwitchEvent, error) {
+	var result []*models.AppSwitchEvent
+	for _, evs := range s.events {
+		for _, ev := range evs {
+			if !ev.StartTime.Before(start) && ev.StartTime.Before(end) {
+				result = append(result, ev)
+			}
+		}
+	}
+	return result, nil
 }

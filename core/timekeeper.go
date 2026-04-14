@@ -243,8 +243,8 @@ func (t *TimeKeeper) handleEvent(event *models.AppSwitchEvent) {
 	t.aggregateNewEvent(event)
 	t.curAppEvent.EndTime = event.StartTime
 
-	// store the current app event
-	if t.opts.StoreEvents {
+	// store the current app event (skip synthetic markers)
+	if t.opts.StoreEvents && t.curAppEvent.AppName != constants.SYSTEM_PAUSED {
 		err := t.Storage.Events().AddEvent(t.curAppEvent)
 		if err != nil {
 			t.logger.Error("Error storing event", "error", err)
