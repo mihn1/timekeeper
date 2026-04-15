@@ -306,6 +306,76 @@ func (a *App) GetCategoryUsageData(dateStr string) ([]*dtos.CategoryUsageItem, e
 	return result, nil
 }
 
+// GetCategoryUsageTotals returns category time totals summed across a local date range.
+// Uses the user's timezone to compute accurate UTC boundaries, then queries raw events
+// (same approach as single-day queries) so UTC+ users get correct data.
+func (a *App) GetCategoryUsageTotals(startDate, endDate string) ([]*dtos.CategoryUsageItem, error) {
+	if a.timekeeper == nil {
+		return nil, fmt.Errorf("timekeeper is not initialized")
+	}
+
+	tz := a.getTimezone()
+
+	// Convert local start date → UTC start of that local day.
+	utcStart, _, err := tzutil.LocalDayToUTCRange(startDate, tz)
+	if err != nil {
+		return nil, fmt.Errorf("invalid start date %q: %w", startDate, err)
+	}
+	// Convert local end date → UTC end of that local day.
+	_, utcEnd, err := tzutil.LocalDayToUTCRange(endDate, tz)
+	if err != nil {
+		return nil, fmt.Errorf("invalid end date %q: %w", endDate, err)
+	}
+
+	catNames := a.categoryNameMap()
+
+	// Try raw events first — timezone-accurate.
+	events, qErr := a.timekeeper.Storage.Events().GetEventsByTimeRange(utcStart, utcEnd)
+	if qErr == nil && len(events) > 0 {
+		catTotals := tzutil.AggregateEventsByCategory(events)
+		result := make([]*dtos.CategoryUsageItem, 0, len(catTotals))
+		for catId, ms := range catTotals {
+			name := catNames[catId]
+			if name == "" {
+				name = "Undefined"
+			}
+			result = append(result, &dtos.CategoryUsageItem{
+				Id:          int(catId),
+				Name:        name,
+				TimeElapsed: ms,
+			})
+		}
+		return result, nil
+	}
+
+	// Fall back to aggregation tables. Convert UTC boundaries back to DateOnly for the query.
+	startDateOnly := datatypes.NewDateOnly(utcStart)
+	endDateOnly := datatypes.NewDateOnly(utcEnd.Add(-time.Second))
+	aggrs, err := a.timekeeper.Storage.CategoryAggregations().GetCategoryAggregationsByDateRange(startDateOnly, endDateOnly)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load category totals: %w", err)
+	}
+
+	totals := make(map[models.CategoryId]int64)
+	for _, aggr := range aggrs {
+		totals[aggr.CategoryId] += aggr.TimeElapsed
+	}
+
+	result := make([]*dtos.CategoryUsageItem, 0, len(totals))
+	for catId, ms := range totals {
+		name := catNames[catId]
+		if name == "" {
+			name = "Undefined"
+		}
+		result = append(result, &dtos.CategoryUsageItem{
+			Id:          int(catId),
+			Name:        name,
+			TimeElapsed: ms,
+		})
+	}
+	return result, nil
+}
+
 // GetCategoryUsageRange returns per-category daily summaries for a date range (trend chart data).
 func (a *App) GetCategoryUsageRange(startDate, endDate string) ([]*dtos.DailyCategorySummary, error) {
 	if a.timekeeper == nil {

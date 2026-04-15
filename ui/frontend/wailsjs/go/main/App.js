@@ -6,6 +6,10 @@ export function AddCategory(arg1) {
   return window['go']['main']['App']['AddCategory'](arg1);
 }
 
+export function AddGoal(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['AddGoal'](arg1, arg2, arg3, arg4);
+}
+
 export function AddRule(arg1) {
   return window['go']['main']['App']['AddRule'](arg1);
 }
@@ -58,6 +62,10 @@ export function GetCategoryUsageRange(arg1, arg2) {
   return window['go']['main']['App']['GetCategoryUsageRange'](arg1, arg2);
 }
 
+export function GetCategoryUsageTotals(arg1, arg2) {
+  return window['go']['main']['App']['GetCategoryUsageTotals'](arg1, arg2);
+}
+
 export function GetEventLog(arg1) {
   return window['go']['main']['App']['GetEventLog'](arg1);
 }
@@ -90,16 +98,16 @@ export function SavePreferences(arg1) {
   return window['go']['main']['App']['SavePreferences'](arg1);
 }
 
-export function SetGoal(arg1, arg2) {
-  return window['go']['main']['App']['SetGoal'](arg1, arg2);
-}
-
 export function TestRuleMatch(arg1, arg2, arg3) {
   return window['go']['main']['App']['TestRuleMatch'](arg1, arg2, arg3);
 }
 
 export function UpdateCategory(arg1, arg2) {
   return window['go']['main']['App']['UpdateCategory'](arg1, arg2);
+}
+
+export function UpdateGoal(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['UpdateGoal'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function UpdateRule(arg1, arg2) {

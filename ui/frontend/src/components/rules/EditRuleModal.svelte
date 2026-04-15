@@ -10,6 +10,8 @@
 
   const dispatch = createEventDispatcher();
 
+  const ALL_APPS = 'All_Apps';
+
   type FormErrors = {
     categoryId?: string;
     appName?: string;
@@ -28,15 +30,15 @@
     isExclusion: false
   };
 
+  let allApps = false;
   let formErrors: FormErrors = {};
-  
+
   // Better reactive approach: re-initialize only when the rule ID changes
   let previousRuleId = null;
 
   $: if (show && rule) {
     // Only initialize form when a different rule is selected or modal is first opened
-    if (rule.id !== previousRuleId) {      
-      // Make sure all properties are properly copied
+    if (rule.id !== previousRuleId) {
       editedRule = {
         id: rule.id || 0,
         categoryId: rule.categoryId,
@@ -45,12 +47,19 @@
         expression: rule.expression || "",
         isRegex: rule.isRegex || false,
         priority: rule.priority || 0,
-        // Ensure isExclusion is properly copied from the rule
-        isExclusion: rule.isExclusion === true, // Use === true to handle undefined
+        isExclusion: rule.isExclusion === true,
       };
-      
-      formErrors = {}; // Reset form errors
+      allApps = editedRule.appName === ALL_APPS;
+      formErrors = {};
       previousRuleId = rule.id;
+    }
+  }
+
+  function toggleAllApps() {
+    if (allApps) {
+      editedRule.appName = ALL_APPS;
+    } else {
+      editedRule.appName = '';
     }
   }
   
@@ -63,12 +72,12 @@
     formErrors = {};
     let isValid = true;
 
-    if (!editedRule.categoryId) {
+    if (!editedRule.categoryId && !editedRule.isExclusion) {
       formErrors.categoryId = "Category ID is required";
       isValid = false;
     }
 
-    if (!editedRule.appName.trim()) {
+    if (!allApps && !editedRule.appName.trim()) {
       formErrors.appName = "App Name is required";
       isValid = false;
     }
@@ -125,14 +134,17 @@
         <input
           id="app-name"
           type="text"
-          class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 {formErrors.appName
-            ? 'border-red-500'
-            : 'border-gray-300'}"
+          class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 {formErrors.appName ? 'border-red-500' : 'border-gray-300'} {allApps ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}"
           bind:value={editedRule.appName}
+          readonly={allApps}
         />
         {#if formErrors.appName}
           <p class="text-red-500 text-xs mt-1">{formErrors.appName}</p>
         {/if}
+        <label class="inline-flex items-center mt-2">
+          <input type="checkbox" class="form-checkbox h-4 w-4 text-blue-600" bind:checked={allApps} on:change={toggleAllApps} />
+          <span class="ml-2 text-xs text-gray-600">Apply to all apps</span>
+        </label>
       </div>
 
       <div>

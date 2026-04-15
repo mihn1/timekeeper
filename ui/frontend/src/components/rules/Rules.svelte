@@ -165,18 +165,20 @@
   }
 
   const tableColumns: Column[] = [
-    { 
-      key: 'categoryId', 
-      title: 'Category', 
-      sortable: true, 
+    { key: 'id', title: 'ID', sortable: true, width: '56px', cellClass: 'text-right font-mono opacity-60' },
+    {
+      key: 'categoryId',
+      title: 'Category',
+      sortable: true,
+      width: '130px',
       formatter: (value) => getCategoryName(value)
     },
-    { key: 'appName', title: 'App Name', sortable: true },
-    { key: 'additionalDataKey', title: 'Data Key', sortable: true },
+    { key: 'appName', title: 'App Name', sortable: true, width: '160px' },
+    { key: 'additionalDataKey', title: 'Data Key', sortable: true, width: '100px' },
     { key: 'expression', title: 'Expression', sortable: true },
-    { key: 'isRegex', title: 'Regex', sortable: true, formatter: (value) => value ? 'Yes' : 'No' },
-    { key: 'isExclusion', title: 'Exclusion', sortable: true, formatter: (value) => value ? 'Yes' : 'No' },
-    { key: 'priority', title: 'Priority', sortable: true },
+    { key: 'isRegex', title: 'Regex', sortable: true, width: '72px', cellClass: 'text-center', formatter: (value) => value ? '✓' : '—' },
+    { key: 'isExclusion', title: 'Excl.', sortable: true, width: '60px', cellClass: 'text-center', formatter: (value) => value ? '✓' : '—' },
+    { key: 'priority', title: 'Priority', sortable: true, width: '72px', cellClass: 'text-right' },
   ];
 
   // Add actions to handle both edit and delete
@@ -316,14 +318,15 @@
           <div class="group-header p-3 font-medium">
             {group.appName} ({group.rules.length} {group.rules.length === 1 ? 'rule' : 'rules'})
           </div>
-          <DataTable 
-            data={group.rules} 
+          <DataTable
+            data={group.rules}
             columns={tableColumns}
             rowActions={rowActions}
             emptyMessage="No rules found"
             pageSize={group.rules.length}
             noPagination={true}
-            noHeader={false} 
+            noHeader={false}
+            compact={true}
             />
         </div>
       {:else}
@@ -332,12 +335,13 @@
         </div>
       {/each}
     {:else}
-      <DataTable 
-        data={filteredRules} 
+      <DataTable
+        data={filteredRules}
         columns={tableColumns}
         rowActions={rowActions}
         emptyMessage="No rules found"
         pageSize={selectedPageSize}
+        compact={true}
       />
     {/if}
   </div>

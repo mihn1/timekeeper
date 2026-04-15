@@ -1,15 +1,12 @@
 package dtos
 
-// GoalItem is the API representation of a category goal, enriched with category name.
+// GoalItem is the API representation of a goal, enriched with category names.
 type GoalItem struct {
-	CategoryId    int    `json:"categoryId"`
-	CategoryName  string `json:"categoryName"`
-	DailyTargetMs int64  `json:"dailyTargetMs"`
-	Enabled       bool   `json:"enabled"`
-}
-
-// GoalSet is the input payload for setting a goal.
-type GoalSet struct {
-	CategoryId    int   `json:"categoryId"`
-	DailyTargetMs int64 `json:"dailyTargetMs"`
+	Id            int64    `json:"id"`
+	Name          string   `json:"name"`
+	IsActive      bool     `json:"isActive"`
+	CategoryIds   []int    `json:"categoryIds"`
+	CategoryNames []string `json:"categoryNames"`
+	Frequency     int      `json:"frequency"`
+	TargetMs      int64    `json:"targetMs"`
 }

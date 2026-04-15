@@ -21,6 +21,10 @@
       on:click={() => navigate('categories')}
     >Categories</button>
     <button
+      class="cursor-pointer menu-item {$currentView === 'goals' ? 'active' : ''}"
+      on:click={() => navigate('goals')}
+    >Goals</button>
+    <button
       class="cursor-pointer menu-item {$currentView === 'events' ? 'active' : ''}"
       on:click={() => navigate('events')}
     >Event Log</button>

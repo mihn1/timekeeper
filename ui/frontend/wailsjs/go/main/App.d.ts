@@ -4,6 +4,8 @@ import {dtos} from '../models';
 
 export function AddCategory(arg1:dtos.CategoryCreate):Promise<void>;
 
+export function AddGoal(arg1:string,arg2:Array<number>,arg3:number,arg4:number):Promise<number>;
+
 export function AddRule(arg1:dtos.RuleCreate):Promise<void>;
 
 export function DeleteCategory(arg1:number):Promise<void>;
@@ -30,6 +32,8 @@ export function GetCategoryUsageData(arg1:string):Promise<Array<dtos.CategoryUsa
 
 export function GetCategoryUsageRange(arg1:string,arg2:string):Promise<Array<dtos.DailyCategorySummary>>;
 
+export function GetCategoryUsageTotals(arg1:string,arg2:string):Promise<Array<dtos.CategoryUsageItem>>;
+
 export function GetEventLog(arg1:string):Promise<Array<dtos.EventLogItem>>;
 
 export function GetGoals():Promise<Array<dtos.GoalItem>>;
@@ -46,10 +50,10 @@ export function IsTrackingEnabled():Promise<boolean>;
 
 export function SavePreferences(arg1:dtos.PreferencesDto):Promise<void>;
 
-export function SetGoal(arg1:number,arg2:number):Promise<void>;
-
 export function TestRuleMatch(arg1:string,arg2:string,arg3:string):Promise<dtos.RuleMatchResult>;
 
 export function UpdateCategory(arg1:number,arg2:dtos.CategoryUpdate):Promise<void>;
+
+export function UpdateGoal(arg1:number,arg2:string,arg3:Array<number>,arg4:number,arg5:number,arg6:boolean):Promise<void>;
 
 export function UpdateRule(arg1:number,arg2:dtos.RuleUpdate):Promise<void>;

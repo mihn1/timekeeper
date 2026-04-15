@@ -155,10 +155,13 @@ export namespace dtos {
 	    }
 	}
 	export class GoalItem {
-	    categoryId: number;
-	    categoryName: string;
-	    dailyTargetMs: number;
-	    enabled: boolean;
+	    id: number;
+	    name: string;
+	    isActive: boolean;
+	    categoryIds: number[];
+	    categoryNames: string[];
+	    frequency: number;
+	    targetMs: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new GoalItem(source);
@@ -166,10 +169,13 @@ export namespace dtos {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.categoryId = source["categoryId"];
-	        this.categoryName = source["categoryName"];
-	        this.dailyTargetMs = source["dailyTargetMs"];
-	        this.enabled = source["enabled"];
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.isActive = source["isActive"];
+	        this.categoryIds = source["categoryIds"];
+	        this.categoryNames = source["categoryNames"];
+	        this.frequency = source["frequency"];
+	        this.targetMs = source["targetMs"];
 	    }
 	}
 	export class PreferencesDto {

@@ -16,6 +16,10 @@
     [key: string]: string;
   };
   
+  const ALL_APPS = 'All_Apps';
+
+  let allApps = prefillAppName === ALL_APPS;
+
   let newRule: dtos.RuleCreate = {
     categoryId: 0,
     appName: prefillAppName,
@@ -27,10 +31,21 @@
   };
 
   // Sync prefill when prop changes (e.g. when modal re-opens for a different app).
+  // Only runs when prefillAppName is non-empty — avoids making newRule a dependency
+  // which would reset appName on every keystroke.
   $: if (prefillAppName && show) {
-    newRule = { ...newRule, appName: prefillAppName };
+    newRule.appName = prefillAppName;
+    allApps = prefillAppName === ALL_APPS;
   }
-  
+
+  function toggleAllApps() {
+    if (allApps) {
+      newRule.appName = ALL_APPS;
+    } else {
+      newRule.appName = '';
+    }
+  }
+
   let formErrors: FormErrors = {};
   
   function validateForm() {
@@ -42,7 +57,7 @@
       isValid = false;
     }
     
-    if (!newRule.appName.trim()) {
+    if (!allApps && !newRule.appName.trim()) {
       formErrors.appName = 'App Name is required';
       isValid = false;
     }
@@ -63,12 +78,13 @@
   }
   
   function resetForm() {
-    newRule = { 
-      categoryId: 0, 
-      appName: '', 
-      additionalDataKey: '', 
-      expression: '', 
-      isRegex: false, 
+    allApps = false;
+    newRule = {
+      categoryId: 0,
+      appName: '',
+      additionalDataKey: '',
+      expression: '',
+      isRegex: false,
       priority: 0,
       isExclusion: false
     };
@@ -103,15 +119,20 @@
       
       <div>
         <label for="app-name" class="block text-sm font-medium text-gray-700 mb-1">App Name</label>
-        <input 
+        <input
           id="app-name"
-          type="text" 
-          class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 {formErrors.appName ? 'border-red-500' : 'border-gray-300'}" 
+          type="text"
+          class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 {formErrors.appName ? 'border-red-500' : 'border-gray-300'} {allApps ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}"
           bind:value={newRule.appName}
+          readonly={allApps}
         />
         {#if formErrors.appName}
           <p class="text-red-500 text-xs mt-1">{formErrors.appName}</p>
         {/if}
+        <label class="inline-flex items-center mt-2">
+          <input type="checkbox" class="form-checkbox h-4 w-4 text-blue-600" bind:checked={allApps} on:change={toggleAllApps} />
+          <span class="ml-2 text-xs text-gray-600">Apply to all apps</span>
+        </label>
       </div>
       
       <div>

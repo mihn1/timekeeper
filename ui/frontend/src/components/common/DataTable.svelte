@@ -10,6 +10,7 @@
   export let emptyMessage = "No data found";
   export let noPagination = false;
   export let noHeader = false;
+  export let compact = false;
   
   const dispatch = createEventDispatcher();
   
@@ -72,9 +73,10 @@
       <thead class="table-header">
         <tr>
           {#each columns as column}
-            <th 
-              class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer"
+            <th
+              class="{compact ? 'px-3 py-2' : 'px-6 py-3'} text-left align-middle text-xs font-medium uppercase tracking-wider cursor-pointer {column.cellClass || ''}"
               class:cursor-default={!column.sortable}
+              style={column.width ? `width: ${column.width}` : ''}
               on:click={() => sort(column)}
             >
               <div class="flex items-center space-x-1">
@@ -92,7 +94,7 @@
             </th>
           {/each}
           {#if rowActions.length > 0 || actionIcon}
-            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+            <th class="{compact ? 'px-3 py-2' : 'px-6 py-3'} text-right align-middle text-xs font-medium uppercase tracking-wider">
               Actions
             </th>
           {/if}
@@ -111,12 +113,15 @@
           {#each sortedData as row}
             <tr class="hover-row">
               {#each columns as column}
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td
+                  class="{compact ? 'px-3 py-2' : 'px-6 py-4'} whitespace-nowrap text-left align-middle text-sm {column.cellClass || ''}"
+                  style={column.width ? `width: ${column.width}` : ''}
+                >
                   {column.formatter ? column.formatter(row[column.key]) : row[column.key]}
                 </td>
               {/each}
               {#if rowActions.length > 0 || actionIcon}
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <td class="{compact ? 'px-3 py-2' : 'px-6 py-4'} whitespace-nowrap text-right align-middle text-sm font-medium">
                   <div class="flex justify-end space-x-2">
                     {#if rowActions.length > 0}
                       {#each rowActions as action}

@@ -9,6 +9,7 @@
   import Rules from './components/rules/Rules.svelte';
   import Categories from './components/categories/Categories.svelte';
   import EventLog from './components/events/EventLog.svelte';
+  import Goals from './components/Goals.svelte';
   import Preferences from './components/Preferences.svelte';
   import Menu from './components/Menu.svelte';
   import StatusBar from './components/StatusBar.svelte';
@@ -57,6 +58,8 @@
         <Rules />
       {:else if $currentView === 'categories'}
         <Categories />
+      {:else if $currentView === 'goals'}
+        <Goals />
       {:else if $currentView === 'events'}
         <EventLog />
       {:else if $currentView === 'preferences'}

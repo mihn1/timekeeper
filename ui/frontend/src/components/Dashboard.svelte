@@ -245,7 +245,7 @@
       />
 
       <!-- Goals panel -->
-      <GoalsPanel categoryUsageData={categoryUsageData} />
+      <GoalsPanel selectedDate={selectedDate} />
 
       <!-- Charts row -->
       <div class="chart-container">
