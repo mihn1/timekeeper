@@ -3,6 +3,8 @@ package sqlite
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/mihn1/timekeeper/internal/models"
@@ -23,73 +25,115 @@ func NewGoalStore(db *sql.DB, mu *sync.RWMutex, tableName string) *GoalStore {
 func (s *GoalStore) initSchema() {
 	// Create with new schema if table doesn't exist.
 	_, err := s.db.Exec(`CREATE TABLE IF NOT EXISTS ` + s.tableName + ` (
-		category_id INTEGER NOT NULL,
-		goal_type   TEXT    NOT NULL DEFAULT 'daily',
-		target_ms   INTEGER NOT NULL,
-		enabled     INTEGER NOT NULL DEFAULT 1,
-		PRIMARY KEY (category_id, goal_type)
+		id           INTEGER PRIMARY KEY AUTOINCREMENT,
+		name         TEXT    NOT NULL DEFAULT '',
+		is_active    INTEGER NOT NULL DEFAULT 1,
+		category_ids TEXT    NOT NULL DEFAULT '',
+		frequency    INTEGER NOT NULL DEFAULT 1,
+		target_ms    INTEGER NOT NULL DEFAULT 0
 	)`)
 	if err != nil {
 		panic(fmt.Sprintf("failed to create %s table: %v", s.tableName, err))
 	}
 
-	// Migrate old schema if goal_type column is missing.
+	// Detect old schema by checking for presence of "name" column.
 	rows, err := s.db.Query(`PRAGMA table_info(` + s.tableName + `)`)
 	if err != nil {
 		return
 	}
 	defer rows.Close()
 
-	hasGoalType := false
-	hasDailyTargetMs := false
+	hasName := false
+	hasOldCategoryId := false
 	for rows.Next() {
 		var cid int
-		var name, colType string
+		var colName, colType string
 		var notNull, pk int
 		var dflt sql.NullString
-		if err := rows.Scan(&cid, &name, &colType, &notNull, &dflt, &pk); err != nil {
+		if err := rows.Scan(&cid, &colName, &colType, &notNull, &dflt, &pk); err != nil {
 			continue
 		}
-		if name == "goal_type" {
-			hasGoalType = true
+		if colName == "name" {
+			hasName = true
 		}
-		if name == "daily_target_ms" {
-			hasDailyTargetMs = true
+		if colName == "category_id" {
+			hasOldCategoryId = true
 		}
 	}
 	rows.Close()
 
-	if hasGoalType {
+	if hasName {
 		return // Already on new schema.
 	}
 
-	// Migrate: old schema used daily_target_ms + category_id as sole PK.
+	if !hasOldCategoryId {
+		return // Empty or unknown table, no migration needed.
+	}
+
+	// Migrate old schema: had (category_id, goal_type TEXT, target_ms, enabled).
 	newTable := s.tableName + "_new"
 	_, err = s.db.Exec(`CREATE TABLE ` + newTable + ` (
-		category_id INTEGER NOT NULL,
-		goal_type   TEXT    NOT NULL DEFAULT 'daily',
-		target_ms   INTEGER NOT NULL,
-		enabled     INTEGER NOT NULL DEFAULT 1,
-		PRIMARY KEY (category_id, goal_type)
+		id           INTEGER PRIMARY KEY AUTOINCREMENT,
+		name         TEXT    NOT NULL DEFAULT '',
+		is_active    INTEGER NOT NULL DEFAULT 1,
+		category_ids TEXT    NOT NULL DEFAULT '',
+		frequency    INTEGER NOT NULL DEFAULT 1,
+		target_ms    INTEGER NOT NULL DEFAULT 0
 	)`)
 	if err != nil {
 		return
 	}
 
-	if hasDailyTargetMs {
-		s.db.Exec(`INSERT INTO ` + newTable + ` (category_id, goal_type, target_ms, enabled)
-			SELECT category_id, 'daily', daily_target_ms, enabled FROM ` + s.tableName)
-	}
+	// Map goal_type string → frequency int.
+	s.db.Exec(`INSERT INTO ` + newTable + ` (name, is_active, category_ids, frequency, target_ms)
+		SELECT
+			'',
+			COALESCE(enabled, 1),
+			CAST(category_id AS TEXT),
+			CASE goal_type
+				WHEN 'weekly'  THEN 2
+				WHEN 'monthly' THEN 3
+				ELSE 1
+			END,
+			target_ms
+		FROM ` + s.tableName)
 
 	s.db.Exec(`DROP TABLE ` + s.tableName)
 	s.db.Exec(`ALTER TABLE ` + newTable + ` RENAME TO ` + s.tableName)
+}
+
+func parseCategoryIds(s string) []models.CategoryId {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	result := make([]models.CategoryId, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		n, err := strconv.ParseInt(p, 10, 64)
+		if err == nil {
+			result = append(result, models.CategoryId(n))
+		}
+	}
+	return result
+}
+
+func serializeCategoryIds(ids []models.CategoryId) string {
+	parts := make([]string, len(ids))
+	for i, id := range ids {
+		parts[i] = strconv.FormatInt(int64(id), 10)
+	}
+	return strings.Join(parts, ",")
 }
 
 func (s *GoalStore) GetGoals() ([]*models.CategoryGoal, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	rows, err := s.db.Query(`SELECT category_id, goal_type, target_ms, enabled FROM ` + s.tableName)
+	rows, err := s.db.Query(`SELECT id, name, is_active, category_ids, frequency, target_ms FROM ` + s.tableName)
 	if err != nil {
 		return nil, err
 	}
@@ -98,33 +142,68 @@ func (s *GoalStore) GetGoals() ([]*models.CategoryGoal, error) {
 	var goals []*models.CategoryGoal
 	for rows.Next() {
 		goal := &models.CategoryGoal{}
-		var enabled int
-		if err := rows.Scan(&goal.CategoryId, &goal.GoalType, &goal.TargetMs, &enabled); err != nil {
+		var isActive int
+		var categoryIdsStr string
+		if err := rows.Scan(&goal.Id, &goal.Name, &isActive, &categoryIdsStr, &goal.Frequency, &goal.TargetMs); err != nil {
 			return nil, err
 		}
-		goal.Enabled = enabled != 0
+		goal.IsActive = isActive != 0
+		goal.CategoryIds = parseCategoryIds(categoryIdsStr)
 		goals = append(goals, goal)
 	}
 	return goals, nil
 }
 
-func (s *GoalStore) SetGoal(categoryId models.CategoryId, goalType models.GoalType, targetMs int64) error {
+func (s *GoalStore) AddGoal(goal *models.CategoryGoal) (int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	_, err := s.db.Exec(`
-		INSERT INTO `+s.tableName+` (category_id, goal_type, target_ms, enabled)
-		VALUES (?, ?, ?, 1)
-		ON CONFLICT(category_id, goal_type) DO UPDATE SET target_ms = excluded.target_ms, enabled = 1`,
-		int(categoryId), string(goalType), targetMs)
+	res, err := s.db.Exec(
+		`INSERT INTO `+s.tableName+` (name, is_active, category_ids, frequency, target_ms) VALUES (?, ?, ?, ?, ?)`,
+		goal.Name,
+		boolToInt(goal.IsActive),
+		serializeCategoryIds(goal.CategoryIds),
+		int(goal.Frequency),
+		goal.TargetMs,
+	)
+	if err != nil {
+		return 0, err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	goal.Id = id
+	return id, nil
+}
+
+func (s *GoalStore) UpdateGoal(goal *models.CategoryGoal) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_, err := s.db.Exec(
+		`UPDATE `+s.tableName+` SET name=?, is_active=?, category_ids=?, frequency=?, target_ms=? WHERE id=?`,
+		goal.Name,
+		boolToInt(goal.IsActive),
+		serializeCategoryIds(goal.CategoryIds),
+		int(goal.Frequency),
+		goal.TargetMs,
+		goal.Id,
+	)
 	return err
 }
 
-func (s *GoalStore) DeleteGoal(categoryId models.CategoryId, goalType models.GoalType) error {
+func (s *GoalStore) DeleteGoal(id int64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	_, err := s.db.Exec(`DELETE FROM `+s.tableName+` WHERE category_id = ? AND goal_type = ?`,
-		int(categoryId), string(goalType))
+	_, err := s.db.Exec(`DELETE FROM `+s.tableName+` WHERE id=?`, id)
 	return err
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }

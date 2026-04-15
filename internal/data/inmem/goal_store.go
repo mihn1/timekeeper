@@ -1,24 +1,22 @@
 package inmem
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/mihn1/timekeeper/internal/models"
 )
 
-type goalKey struct {
-	CategoryId models.CategoryId
-	GoalType   models.GoalType
-}
-
 type GoalStore struct {
-	mu    sync.RWMutex
-	goals map[goalKey]*models.CategoryGoal
+	mu     sync.RWMutex
+	goals  map[int64]*models.CategoryGoal
+	nextId int64
 }
 
 func NewGoalStore() *GoalStore {
 	return &GoalStore{
-		goals: make(map[goalKey]*models.CategoryGoal),
+		goals:  make(map[int64]*models.CategoryGoal),
+		nextId: 1,
 	}
 }
 
@@ -33,24 +31,41 @@ func (s *GoalStore) GetGoals() ([]*models.CategoryGoal, error) {
 	return result, nil
 }
 
-func (s *GoalStore) SetGoal(categoryId models.CategoryId, goalType models.GoalType, targetMs int64) error {
+func (s *GoalStore) AddGoal(goal *models.CategoryGoal) (int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	key := goalKey{CategoryId: categoryId, GoalType: goalType}
-	s.goals[key] = &models.CategoryGoal{
-		CategoryId: categoryId,
-		GoalType:   goalType,
-		TargetMs:   targetMs,
-		Enabled:    true,
+	id := s.nextId
+	s.nextId++
+	goal.Id = id
+	// Store a copy.
+	cp := *goal
+	ids := make([]models.CategoryId, len(goal.CategoryIds))
+	copy(ids, goal.CategoryIds)
+	cp.CategoryIds = ids
+	s.goals[id] = &cp
+	return id, nil
+}
+
+func (s *GoalStore) UpdateGoal(goal *models.CategoryGoal) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, ok := s.goals[goal.Id]; !ok {
+		return fmt.Errorf("goal %d not found", goal.Id)
 	}
+	cp := *goal
+	ids := make([]models.CategoryId, len(goal.CategoryIds))
+	copy(ids, goal.CategoryIds)
+	cp.CategoryIds = ids
+	s.goals[goal.Id] = &cp
 	return nil
 }
 
-func (s *GoalStore) DeleteGoal(categoryId models.CategoryId, goalType models.GoalType) error {
+func (s *GoalStore) DeleteGoal(id int64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	delete(s.goals, goalKey{CategoryId: categoryId, GoalType: goalType})
+	delete(s.goals, id)
 	return nil
 }

@@ -1,16 +1,29 @@
 package models
 
-type GoalType string
+type GoalFrequency int
 
 const (
-	GoalTypeDaily   GoalType = "daily"
-	GoalTypeWeekly  GoalType = "weekly"
-	GoalTypeMonthly GoalType = "monthly"
+	FrequencyDaily   GoalFrequency = 1
+	FrequencyWeekly  GoalFrequency = 2
+	FrequencyMonthly GoalFrequency = 3
 )
 
+func FrequencyLabel(f GoalFrequency) string {
+	switch f {
+	case FrequencyWeekly:
+		return "Weekly"
+	case FrequencyMonthly:
+		return "Monthly"
+	default:
+		return "Daily"
+	}
+}
+
 type CategoryGoal struct {
-	CategoryId CategoryId
-	GoalType   GoalType
-	TargetMs   int64
-	Enabled    bool
+	Id          int64
+	Name        string
+	IsActive    bool
+	CategoryIds []CategoryId // in-memory; stored as "1,2,3" in DB
+	Frequency   GoalFrequency
+	TargetMs    int64
 }
