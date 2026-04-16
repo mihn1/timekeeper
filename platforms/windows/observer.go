@@ -159,6 +159,8 @@ func (o *Observer) run() error {
 	o.tid = uint32(r)
 	close(o.readyCh) // signal: message loop is about to start, o.tid is valid
 
+	go o.monitorSleep()
+
 	var msg struct {
 		hwnd   uintptr
 		msg    uint32
@@ -180,6 +182,47 @@ func (o *Observer) run() error {
 		default:
 			procTranslateMessage.Call(uintptr(unsafe.Pointer(&msg)))
 			procDispatchMessageW.Call(uintptr(unsafe.Pointer(&msg)))
+		}
+	}
+}
+
+// monitorSleep runs in a goroutine and detects OS sleep/hibernate by watching
+// for abnormally large gaps in a 30-second ticker. When the OS suspends, all
+// goroutines pause; on resume the ticker fires with elapsed >> 30s. If the
+// foreground app hasn't changed (no WinEvent fires), the WinEvent-path idle
+// detection never triggers — this goroutine injects SYSTEM_PAUSED proactively.
+func (o *Observer) monitorSleep() {
+	const tickInterval = 30 * time.Second
+	ticker := time.NewTicker(tickInterval)
+	defer ticker.Stop()
+	lastTick := time.Now()
+	for {
+		select {
+		case <-o.doneCh:
+			return
+		case now := <-ticker.C:
+			gap := now.Sub(lastTick)
+			lastTick = now
+			if gap <= maxIdleGap {
+				continue
+			}
+			// Large gap detected — OS likely resumed from sleep/hibernate.
+			o.mu.Lock()
+			prevIsPaused := o.isPaused
+			prevEmitTime := o.lastEmitTime
+			o.mu.Unlock()
+			if prevIsPaused || prevEmitTime.IsZero() {
+				continue // already paused or no prior event
+			}
+			o.logger.Info("Sleep/hibernate detected via ticker gap", "gap", gap)
+			o.mu.Lock()
+			o.isPaused = true
+			o.lastEmitTime = now
+			o.mu.Unlock()
+			o.callback(models.AppSwitchEvent{
+				AppName:   constants.SYSTEM_PAUSED,
+				StartTime: prevEmitTime.Add(time.Millisecond),
+			})
 		}
 	}
 }
