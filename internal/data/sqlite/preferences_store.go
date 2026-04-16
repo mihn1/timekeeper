@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"database/sql"
+	"fmt"
 	"sync"
 
 	"github.com/mihn1/timekeeper/internal/models"
@@ -47,6 +48,11 @@ func (s *PreferencesStore) GetPreferences() (*models.UserPreferences, error) {
 			if value != "" {
 				prefs.Timezone = value
 			}
+		case "min_event_duration_ms":
+			var ms int64
+			if _, err := fmt.Sscan(value, &ms); err == nil && ms >= 0 {
+				prefs.MinEventDurationMs = ms
+			}
 		}
 	}
 	return prefs, nil
@@ -56,10 +62,14 @@ func (s *PreferencesStore) SavePreferences(prefs *models.UserPreferences) error 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	_, err := s.db.Exec(
-		"INSERT INTO "+s.tableName+" (key, value) VALUES (?, ?)"+
-			" ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-		"timezone", prefs.Timezone,
-	)
-	return err
+	upsert := "INSERT INTO " + s.tableName + " (key, value) VALUES (?, ?)" +
+		" ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+
+	if _, err := s.db.Exec(upsert, "timezone", prefs.Timezone); err != nil {
+		return err
+	}
+	if _, err := s.db.Exec(upsert, "min_event_duration_ms", fmt.Sprintf("%d", prefs.MinEventDurationMs)); err != nil {
+		return err
+	}
+	return nil
 }

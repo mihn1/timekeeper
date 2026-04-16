@@ -11,25 +11,28 @@
   export let noPagination = false;
   export let noHeader = false;
   export let compact = false;
-  
+  export let initialSortKey: string | null = null;
+  export let initialSortDirection: 'asc' | 'desc' = 'asc';
+
   const dispatch = createEventDispatcher();
-  
+
   let currentPage = 1;
-  let sortKey = null;
-  let sortDirection = 'asc';
-  
-  $: totalPages = Math.ceil(data.length / pageSize);
-  $: startIndex = (currentPage - 1) * pageSize;
-  $: endIndex = Math.min(startIndex + pageSize, data.length);
-  $: paginatedData = noPagination ? data : data.slice(startIndex, endIndex);
-  
-  $: sortedData = sortKey !== null 
-    ? [...paginatedData].sort((a, b) => {
+  let sortKey: string | null = initialSortKey;
+  let sortDirection: 'asc' | 'desc' = initialSortDirection;
+
+  // Sort the full dataset first, then paginate — so sorting works across all pages.
+  $: sortedAll = sortKey !== null
+    ? [...data].sort((a, b) => {
         if (a[sortKey] < b[sortKey]) return sortDirection === 'asc' ? -1 : 1;
         if (a[sortKey] > b[sortKey]) return sortDirection === 'asc' ? 1 : -1;
         return 0;
       })
-    : paginatedData;
+    : data;
+
+  $: totalPages = Math.ceil(sortedAll.length / pageSize);
+  $: startIndex = (currentPage - 1) * pageSize;
+  $: endIndex = Math.min(startIndex + pageSize, sortedAll.length);
+  $: sortedData = noPagination ? sortedAll : sortedAll.slice(startIndex, endIndex);
   
   function nextPage() {
     if (currentPage < totalPages) currentPage++;
@@ -41,12 +44,11 @@
   
   function sort(column) {
     if (!column.sortable) return;
-    
+
     if (sortKey === column.key) {
       if (sortDirection === 'asc') {
         sortDirection = 'desc';
       } else {
-        // Reset sorting when clicked a third time
         sortKey = null;
         sortDirection = 'asc';
       }
@@ -54,6 +56,7 @@
       sortKey = column.key;
       sortDirection = 'asc';
     }
+    currentPage = 1;
   }
   
   function handleActionClick(row, actionHandler) {

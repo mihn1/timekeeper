@@ -33,6 +33,7 @@
   // ── State ─────────────────────────────────────────────────────────────────
   let viewMode = 'day'; // 'day' | '7d' | '14d' | '30d'
   let minDurationMs = 0;
+  let goalsRefreshTick = 0;
   let selectedCategoryFilter = null;
   let showDateInput = false;
   let showCreateRuleModal = false;
@@ -70,6 +71,7 @@
 
   // ── Data loading ──────────────────────────────────────────────────────────
   async function loadData() {
+    goalsRefreshTick++;
     isLoading = true;
     loadError = null;
     try {
@@ -222,30 +224,32 @@
     </div>
   {/if}
 
-  <!-- ── Loading overlay ───────────────────────────────────────────────────── -->
+  <!-- ── Summary + comparison (gated by isLoading) ──────────────────────────── -->
   {#if isLoading}
     <div class="loading">Loading data…</div>
-  {:else}
+  {:else if viewMode === 'day'}
+    <DaySummaryBar
+      appUsageData={appUsageData}
+      categoryUsageData={categoryUsageData}
+      eventCount={eventLog.length}
+    />
+    <ComparisonStrip
+      todayMs={categoryUsageData.filter(c => c.id !== 0).reduce((s,c) => s + c.timeElapsed, 0)}
+      {yesterdayMs}
+      {weekAvgMs}
+    />
+  {/if}
+
+  <!-- ── Goals panel: always mounted in day mode, manages its own data ───────── -->
+  {#if viewMode === 'day'}
+    <GoalsPanel selectedDate={selectedDate} refreshTick={goalsRefreshTick} />
+  {/if}
+
+  <!-- ── Charts + data (gated by isLoading) ────────────────────────────────── -->
+  {#if !isLoading}
 
     <!-- ── DAY MODE ────────────────────────────────────────────────────────── -->
     {#if viewMode === 'day'}
-
-      <!-- Summary bar -->
-      <DaySummaryBar
-        appUsageData={appUsageData}
-        categoryUsageData={categoryUsageData}
-        eventCount={eventLog.length}
-      />
-
-      <!-- Comparison strip -->
-      <ComparisonStrip
-        todayMs={categoryUsageData.filter(c => c.id !== 0).reduce((s,c) => s + c.timeElapsed, 0)}
-        {yesterdayMs}
-        {weekAvgMs}
-      />
-
-      <!-- Goals panel -->
-      <GoalsPanel selectedDate={selectedDate} />
 
       <!-- Charts row -->
       <div class="chart-container">
@@ -322,7 +326,7 @@
       </div>
     {/if}
 
-    <!-- Heatmap calendar — always visible -->
+    <!-- Heatmap calendar -->
     <div class="chart-box">
       <h2>Activity Calendar — {selectedYear}</h2>
       <HeatmapCalendar data={calendarData} year={selectedYear} on:daySelected={handleDaySelected} />

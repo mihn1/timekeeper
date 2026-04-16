@@ -58,6 +58,7 @@ func (a *App) Startup(ctx context.Context) {
 		a.logger.Warn("Failed to load preferences, using defaults", "error", err)
 		a.prefs = models.DefaultPreferences()
 	}
+	a.timekeeper.SetMinEventDurationMs(a.prefs.MinEventDurationMs)
 
 	// Set up the platform observer
 	observer := platforms.NewPlatformObserver(a.timekeeper.PushEvent, false, a.logger)

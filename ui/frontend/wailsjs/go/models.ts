@@ -180,6 +180,7 @@ export namespace dtos {
 	}
 	export class PreferencesDto {
 	    timezone: string;
+	    minEventDurationMs: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new PreferencesDto(source);
@@ -188,6 +189,7 @@ export namespace dtos {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.timezone = source["timezone"];
+	        this.minEventDurationMs = source["minEventDurationMs"];
 	    }
 	}
 	export class RuleCreate {

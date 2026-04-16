@@ -5,6 +5,7 @@
   import { onMount } from 'svelte';
 
   export let selectedDate = '';
+  export let refreshTick = 0;
 
   const FREQ = [
     { value: 1, label: 'Daily' },
@@ -60,7 +61,9 @@
     await loadPeriodData();
   });
 
-  $: { selectedDate; goals; if (selectedDate) loadPeriodData(); }
+  // Reload when date changes (navigation) or dashboard refreshes.
+  $: if (selectedDate) { console.log('[GoalsPanel] selectedDate changed:', selectedDate); loadPeriodData(); }
+  $: if (refreshTick > 0) { console.log('[GoalsPanel] refreshTick changed:', refreshTick); loadPeriodData(); }
 
   async function loadGoals() {
     isLoading = true;
@@ -75,17 +78,24 @@
 
   async function loadPeriodData() {
     if (!selectedDate) return;
+    const date = selectedDate; // snapshot to detect stale results
+    console.log('[GoalsPanel] loadPeriodData start, date=', date);
     try {
       const [d, w, m] = await Promise.all([
-        GetCategoryUsageTotals(selectedDate, selectedDate),
-        GetCategoryUsageTotals(calendarWeekStart(selectedDate), selectedDate),
-        GetCategoryUsageTotals(calendarMonthStart(selectedDate), selectedDate),
+        GetCategoryUsageTotals(date, date),
+        GetCategoryUsageTotals(calendarWeekStart(date), date),
+        GetCategoryUsageTotals(calendarMonthStart(date), date),
       ]);
+      if (date !== selectedDate) {
+        console.log('[GoalsPanel] loadPeriodData stale, discarding. date=', date, 'selectedDate=', selectedDate);
+        return;
+      }
+      console.log('[GoalsPanel] loadPeriodData done, date=', date, 'd=', d);
       dailyUsage   = d ?? [];
       weeklyUsage  = w ?? [];
       monthlyUsage = m ?? [];
     } catch (err) {
-      console.error('Error loading period usage:', err);
+      console.error('[GoalsPanel] Error loading period usage:', err);
     }
   }
 

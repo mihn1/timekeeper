@@ -37,6 +37,8 @@ func (a *App) SavePreferences(dto *dtos.PreferencesDto) error {
 	a.prefs = prefs
 	a.prefsMu.Unlock()
 
-	a.logger.Info("Preferences saved", "timezone", prefs.Timezone)
+	a.timekeeper.SetMinEventDurationMs(prefs.MinEventDurationMs)
+
+	a.logger.Info("Preferences saved", "timezone", prefs.Timezone, "minEventDurationMs", prefs.MinEventDurationMs)
 	return nil
 }

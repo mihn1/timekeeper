@@ -31,7 +31,7 @@
     loadError = null;
     try {
       const result = await GetEventLog(selectedDate);
-      events = (result ?? []).sort((a, b) => a.startTime.localeCompare(b.startTime));
+      events = result ?? [];
     } catch (err) {
       loadError = 'Failed to load events. Please try again.';
       events = [];
@@ -124,6 +124,8 @@
         columns={columns}
         emptyMessage="No events found"
         pageSize={25}
+        initialSortKey="startTime"
+        initialSortDirection="desc"
       />
     {/if}
   </div>

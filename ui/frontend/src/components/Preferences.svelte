@@ -1,5 +1,5 @@
 <script>
-  import { preferences, timezone } from '../stores/preferences.js';
+  import { preferences, timezone, minEventDurationMs } from '../stores/preferences.js';
   import { theme } from '../stores/theme.js';
 
   // ── Timezone picker ────────────────────────────────────────────────────────
@@ -67,6 +67,26 @@
   function clearSearch() {
     tzSearch = '';
   }
+
+  // ── Min event duration ─────────────────────────────────────────────────────
+
+  let minDurationMs = $minEventDurationMs;
+  let minDurationSaving = false;
+  let minDurationError = '';
+
+  $: minDurationMs = $minEventDurationMs;
+
+  async function applyMinDuration() {
+    minDurationSaving = true;
+    minDurationError = '';
+    try {
+      await preferences.setMinEventDurationMs(minDurationMs);
+    } catch {
+      minDurationError = 'Failed to save.';
+    } finally {
+      minDurationSaving = false;
+    }
+  }
 </script>
 
 <div class="prefs-page">
@@ -101,6 +121,42 @@
         >
           ☾ Dark
         </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Tracking ──────────────────────────────────────────────────────── -->
+  <section class="prefs-section">
+    <div class="section-header">
+      <h2>Tracking</h2>
+    </div>
+
+    <div class="pref-row">
+      <div class="pref-info">
+        <span class="pref-label">Minimum event duration</span>
+        <span class="pref-desc">
+          App switches shorter than this threshold are discarded as noise and not counted in aggregations.
+          Set to 0 to count every switch.
+        </span>
+      </div>
+      <div class="duration-control">
+        <div class="duration-input-row">
+          <input
+            class="duration-input"
+            type="number"
+            min="0"
+            max="60000"
+            step="100"
+            bind:value={minDurationMs}
+            on:change={applyMinDuration}
+          />
+          <span class="duration-unit">ms</span>
+        </div>
+        <p class="duration-hint">
+          Default: 1000 ms
+          {#if minDurationSaving}<span class="tz-saving">Saving…</span>{/if}
+          {#if minDurationError}<span class="tz-error">{minDurationError}</span>{/if}
+        </p>
       </div>
     </div>
   </section>
@@ -340,4 +396,44 @@
 
   .tz-saving { color: var(--primary-color); margin-left: 0.4rem; }
   .tz-error  { color: var(--danger-color);  margin-left: 0.4rem; }
+
+  /* ── Duration control ─────────────────────────────────────────── */
+  .duration-control {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    flex-shrink: 0;
+    width: 160px;
+  }
+
+  .duration-input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .duration-input {
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--input-border-color);
+    border-radius: 4px;
+    background-color: var(--input-bg-color);
+    color: var(--input-text-color);
+    font-size: 0.85rem;
+    text-align: right;
+    box-sizing: border-box;
+  }
+
+  .duration-unit {
+    font-size: 0.85rem;
+    color: var(--secondary-color);
+    white-space: nowrap;
+  }
+
+  .duration-hint {
+    margin: 0;
+    font-size: 0.72rem;
+    color: var(--secondary-color);
+    text-align: right;
+  }
 </style>

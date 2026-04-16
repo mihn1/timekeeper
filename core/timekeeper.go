@@ -41,11 +41,12 @@ type TimeKeeper struct {
 	observers    []Observer
 	logger       *slog.Logger
 
-	stateMu          sync.RWMutex
-	eventLoopStarted bool
-	observersStarted bool
-	closed           bool
-	closeOnce        sync.Once
+	stateMu              sync.RWMutex
+	eventLoopStarted     bool
+	observersStarted     bool
+	closed               bool
+	closeOnce            sync.Once
+	minEventDurationMs   int64
 }
 
 func NewTimeKeeperInMem(opts TimeKeeperOptions) *TimeKeeper {
@@ -103,6 +104,18 @@ func NewTimeKeeperSqlite(opts TimeKeeperOptions) *TimeKeeper {
 
 func (t *TimeKeeper) SetLogger(logger *slog.Logger) {
 	t.logger = logger
+}
+
+// SetMinEventDurationMs sets the minimum elapsed time (ms) for an event to be
+// counted in aggregations. Events shorter than this threshold are discarded as
+// noise (e.g. fast app-switches). Thread-safe; takes effect on the next event.
+func (t *TimeKeeper) SetMinEventDurationMs(ms int64) {
+	t.stateMu.Lock()
+	defer t.stateMu.Unlock()
+	if ms < 0 {
+		ms = 0
+	}
+	t.minEventDurationMs = ms
 }
 
 func (t *TimeKeeper) Logger() *slog.Logger {
@@ -257,6 +270,15 @@ func (t *TimeKeeper) handleEvent(event *models.AppSwitchEvent) {
 
 func (t *TimeKeeper) aggregateNewEvent(event *models.AppSwitchEvent) {
 	elapsedTime := event.StartTime.Sub(t.curAppEvent.StartTime).Milliseconds()
+
+	t.stateMu.RLock()
+	minMs := t.minEventDurationMs
+	t.stateMu.RUnlock()
+
+	if minMs > 0 && elapsedTime < minMs {
+		t.logger.Debug("Event discarded as noise (too short)", "appName", t.curAppEvent.AppName, "elapsedMs", elapsedTime, "minMs", minMs)
+		return
+	}
 
 	rules, err := t.getRulesForEvent(t.curAppEvent)
 	if err != nil {
