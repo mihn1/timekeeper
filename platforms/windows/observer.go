@@ -187,26 +187,32 @@ func (o *Observer) run() error {
 }
 
 // monitorSleep runs in a goroutine and detects OS sleep/hibernate by watching
-// for abnormally large gaps in a 30-second ticker. When the OS suspends, all
-// goroutines pause; on resume the ticker fires with elapsed >> 30s. If the
-// foreground app hasn't changed (no WinEvent fires), the WinEvent-path idle
-// detection never triggers — this goroutine injects SYSTEM_PAUSED proactively.
+// for abnormally large gaps between ticker fires. If the foreground app hasn't
+// changed on wake (no WinEvent fires), the WinEvent-path idle detection never
+// triggers — this goroutine injects SYSTEM_PAUSED proactively.
+//
+// Gap detection is wall-clock based (monotonic stripped via Round(0)) because
+// Go's monotonic clock on Windows uses QueryPerformanceCounter, which on some
+// hardware/BIOS configurations (older systems, certain VMs, S3 vs Modern
+// Standby) pauses during sleep. In those cases the monotonic diff on wake is
+// ~tickInterval and sleep would go undetected.
 func (o *Observer) monitorSleep() {
 	const tickInterval = 30 * time.Second
 	ticker := time.NewTicker(tickInterval)
 	defer ticker.Stop()
-	lastTick := time.Now()
+	lastTick := time.Now().Round(0) // strip monotonic so Sub uses wall clock
 	for {
 		select {
 		case <-o.doneCh:
 			return
-		case now := <-ticker.C:
+		case tickTime := <-ticker.C:
+			now := tickTime.Round(0)
 			gap := now.Sub(lastTick)
 			lastTick = now
 			if gap <= maxIdleGap {
 				continue
 			}
-			// Large gap detected — OS likely resumed from sleep/hibernate.
+			// Large wall-clock gap — OS likely resumed from sleep/hibernate.
 			o.mu.Lock()
 			prevIsPaused := o.isPaused
 			prevEmitTime := o.lastEmitTime
@@ -214,8 +220,21 @@ func (o *Observer) monitorSleep() {
 			if prevIsPaused || prevEmitTime.IsZero() {
 				continue // already paused or no prior event
 			}
+			// If handleWindowChange already closed out the sleep period via its
+			// longGap branch, lastEmitTime was refreshed to post-wake; the gap
+			// between now (wall clock) and prevEmitTime will be small. Skip to
+			// avoid emitting a duplicate SYSTEM_PAUSED.
+			if now.Sub(prevEmitTime.Round(0)) <= maxIdleGap {
+				continue
+			}
 			o.logger.Info("Sleep/hibernate detected via ticker gap", "gap", gap)
 			o.mu.Lock()
+			// Re-check under lock to avoid a TOCTOU race where handleWindowChange
+			// ran between our unlock above and this lock.
+			if o.isPaused || o.lastEmitTime != prevEmitTime {
+				o.mu.Unlock()
+				continue
+			}
 			o.isPaused = true
 			o.lastEmitTime = now
 			o.mu.Unlock()
