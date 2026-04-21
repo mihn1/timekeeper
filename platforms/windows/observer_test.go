@@ -366,6 +366,124 @@ func TestHandleWindowChange_Concurrent_NoRaceNoDeadlock(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// handleWindowChange – sleep / lock detection
+// ---------------------------------------------------------------------------
+
+func TestHandleWindowChange_LockScreenApp_EmitsSystemPaused(t *testing.T) {
+	o, events := newTestObserver()
+	o.handleWindowChange("notepad", `C:\notepad.exe`, "doc.txt", 0)
+	o.handleWindowChange("lockapp", `C:\Windows\SystemApps\lockapp.exe`, "", 0)
+
+	got := collect(events)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 events, got %d", len(got))
+	}
+	if got[1].AppName != constants.SYSTEM_PAUSED {
+		t.Errorf("lock screen should map to SYSTEM_PAUSED, got %q", got[1].AppName)
+	}
+	if !o.isPaused {
+		t.Error("observer should be paused after lock screen event")
+	}
+}
+
+func TestHandleWindowChange_LockScreenWhileAlreadyPaused_NoDuplicate(t *testing.T) {
+	o, events := newTestObserver()
+	o.handleWindowChange("lockapp", `C:\Windows\SystemApps\lockapp.exe`, "", 0)
+	o.handleWindowChange("logonui", `C:\Windows\System32\logonui.exe`, "", 0)
+
+	if got := collect(events); len(got) != 1 {
+		t.Errorf("second lock screen event while paused should be suppressed, got %d events", len(got))
+	}
+}
+
+// TestHandleWindowChange_LongGap_InjectsSystemPaused reproduces the
+// sleep-without-lock scenario: the previous event happened long ago (wall
+// clock), but monotonic clock may have stalled during sleep. handleWindowChange
+// must still detect the gap and inject a SYSTEM_PAUSED marker so the pre-sleep
+// event's EndTime doesn't swallow the entire sleep duration.
+func TestHandleWindowChange_LongGap_InjectsSystemPaused(t *testing.T) {
+	o, events := newTestObserver()
+	o.handleWindowChange("notepad", `C:\notepad.exe`, "doc.txt", 0)
+
+	// Simulate a long sleep: rewind lastEmitTime by 10 minutes (> maxIdleGap).
+	o.mu.Lock()
+	o.lastEmitTime = o.lastEmitTime.Add(-10 * time.Minute)
+	preSleepTime := o.lastEmitTime
+	o.mu.Unlock()
+
+	o.handleWindowChange("code", `C:\code.exe`, "main.go", 0)
+
+	got := collect(events)
+	if len(got) != 3 {
+		t.Fatalf("expected 3 events (notepad, SYSTEM_PAUSED, code), got %d", len(got))
+	}
+	if got[1].AppName != constants.SYSTEM_PAUSED {
+		t.Errorf("expected SYSTEM_PAUSED injection at index 1, got %q", got[1].AppName)
+	}
+	// SYSTEM_PAUSED should be placed at preSleep + 1ms so the pre-sleep app's
+	// EndTime closes nearly immediately.
+	wantStart := preSleepTime.Add(time.Millisecond)
+	if !got[1].StartTime.Equal(wantStart) {
+		t.Errorf("SYSTEM_PAUSED StartTime = %v, want %v", got[1].StartTime, wantStart)
+	}
+	if got[2].AppName != "code" {
+		t.Errorf("expected code as third event, got %q", got[2].AppName)
+	}
+}
+
+func TestHandleWindowChange_ShortGap_NoSystemPaused(t *testing.T) {
+	o, events := newTestObserver()
+	o.handleWindowChange("notepad", `C:\notepad.exe`, "doc.txt", 0)
+
+	// Rewind only 1 minute — well below maxIdleGap (5 min). No injection expected.
+	o.mu.Lock()
+	o.lastEmitTime = o.lastEmitTime.Add(-1 * time.Minute)
+	o.mu.Unlock()
+
+	o.handleWindowChange("code", `C:\code.exe`, "main.go", 0)
+
+	got := collect(events)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 events (no SYSTEM_PAUSED for short gap), got %d", len(got))
+	}
+	for _, e := range got {
+		if e.AppName == constants.SYSTEM_PAUSED {
+			t.Errorf("short gap should not inject SYSTEM_PAUSED")
+		}
+	}
+}
+
+func TestHandleWindowChange_LongGap_AfterLock_NoDoubleInjection(t *testing.T) {
+	// After a lock screen already closed the session via SYSTEM_PAUSED, the
+	// subsequent real-app event on unlock should NOT inject a second
+	// SYSTEM_PAUSED marker, even if the wall-clock gap exceeds maxIdleGap.
+	o, events := newTestObserver()
+	o.handleWindowChange("notepad", `C:\notepad.exe`, "doc.txt", 0)
+	o.handleWindowChange("lockapp", `C:\Windows\SystemApps\lockapp.exe`, "", 0)
+
+	o.mu.Lock()
+	o.lastEmitTime = o.lastEmitTime.Add(-10 * time.Minute)
+	o.mu.Unlock()
+
+	o.handleWindowChange("code", `C:\code.exe`, "main.go", 0)
+
+	got := collect(events)
+	// Expected: notepad, SYSTEM_PAUSED (from lock), code. No extra SYSTEM_PAUSED.
+	if len(got) != 3 {
+		t.Fatalf("expected 3 events, got %d", len(got))
+	}
+	pausedCount := 0
+	for _, e := range got {
+		if e.AppName == constants.SYSTEM_PAUSED {
+			pausedCount++
+		}
+	}
+	if pausedCount != 1 {
+		t.Errorf("expected exactly 1 SYSTEM_PAUSED, got %d", pausedCount)
+	}
+}
+
 func TestHandleWindowChange_Concurrent_SameApp_AtMostOne(t *testing.T) {
 	o, events := newTestObserver()
 

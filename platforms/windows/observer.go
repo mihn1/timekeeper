@@ -316,7 +316,13 @@ func (o *Observer) handleWindowChange(appName, exePath, title string, hwnd uintp
 	prevIsPaused := o.isPaused
 	o.mu.Unlock()
 
-	longGap := !prevEmitTime.IsZero() && now.Sub(prevEmitTime) > maxIdleGap
+	// Strip monotonic via Round(0) so the gap is wall-clock based. Go's
+	// monotonic clock on Windows is QueryPerformanceCounter, which pauses
+	// during sleep on some hardware (S3, certain VMs). Without this, a WinEvent
+	// firing on wake before monitorSleep's next tick would show a small mono
+	// diff, miss longGap, skip SYSTEM_PAUSED injection, and cause the pre-sleep
+	// app's EndTime to swallow the entire sleep duration.
+	longGap := !prevEmitTime.IsZero() && now.Round(0).Sub(prevEmitTime.Round(0)) > maxIdleGap
 
 	// ── Lock-screen path ─────────────────────────────────────────────────────
 	if appName == constants.SYSTEM_PAUSED {
