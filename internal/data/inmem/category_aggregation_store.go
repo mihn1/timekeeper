@@ -32,6 +32,17 @@ func (store *CategoryAggregationStore) AggregateCategory(cat *models.Category, d
 	return aggr, nil
 }
 
+func (store *CategoryAggregationStore) DeductCategory(categoryId models.CategoryId, date datatypes.DateOnly, elapsedTime int64) error {
+	key := models.GetCategoryAggregationKey(categoryId, date)
+	if aggr, ok := store.Aggregations[key]; ok {
+		aggr.TimeElapsed -= elapsedTime
+		if aggr.TimeElapsed < 0 {
+			aggr.TimeElapsed = 0
+		}
+	}
+	return nil
+}
+
 func (store *CategoryAggregationStore) GetCategoryAggregation(categoryId models.CategoryId, date datatypes.DateOnly) (*models.CategoryAggregation, bool) {
 	key := models.GetCategoryAggregationKey(categoryId, date)
 	aggr, ok := store.Aggregations[key]

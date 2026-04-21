@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { GetEventLog, GetCategories } from '../../../wailsjs/go/main/App';
+  import { GetEventLog, GetCategories, DeleteEvent } from '../../../wailsjs/go/main/App';
   import { refreshData } from '../../stores/timekeeper';
   import { timezone } from '../../stores/preferences.js';
   import { todayInTz } from '../../utils/dateUtils.js';
@@ -14,12 +14,13 @@
   let isLoading = true;
   let loadError: string | null = null;
   let searchTerm = '';
+  let showIgnored = false;
 
   $: if ($refreshData || selectedDate) { loadEvents(); }
 
-  $: filteredEvents = events.filter(e =>
-    e.appName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  $: filteredEvents = events
+    .filter(e => showIgnored || e.categoryId !== 0)
+    .filter(e => e.appName.toLowerCase().includes(searchTerm.toLowerCase()));
 
   onMount(() => {
     loadCategories();
@@ -48,7 +49,7 @@
   }
 
   function getCategoryName(id: number): string {
-    return categories.find(c => c.id === id)?.name ?? (id === 0 ? 'Uncategorized' : `#${id}`);
+    return categories.find(c => c.id === id)?.name ?? (id === 0 ? 'Ignored' : `#${id}`);
   }
 
   function formatDuration(secs: number): string {
@@ -71,12 +72,26 @@
     { key: 'urlOrTitle',   title: 'URL / Title', sortable: false,
       formatter: (v: string) => v && v.length > 60 ? v.slice(0, 57) + '…' : (v ?? '') },
   ];
+
+  async function deleteEvent(row: dtos.EventLogItem) {
+    if (!confirm(`Delete this event?\n${row.appName} — ${row.startTime}`)) return;
+    try {
+      await DeleteEvent(row.id);
+      events = events.filter(e => e.id !== row.id);
+    } catch (err) {
+      alert('Failed to delete event.');
+    }
+  }
+
+  const rowActions = [
+    { icon: 'trash', title: 'Delete event', handler: deleteEvent },
+  ];
 </script>
 
 <div class="p-6 max-w-6xl mx-auto">
   <h1 class="text-2xl font-bold mb-6 title">Event Log</h1>
 
-  <div class="flex gap-4 items-center mb-6">
+  <div class="flex gap-4 items-center mb-6 flex-wrap">
     <label class="font-medium" for="date-picker">Date:</label>
     <input
       id="date-picker"
@@ -84,6 +99,20 @@
       class="p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
       bind:value={selectedDate}
     />
+    <label class="flex items-center gap-2 cursor-pointer select-none show-ignored">
+      <input type="checkbox" bind:checked={showIgnored} />
+      <span>Show ignored events</span>
+    </label>
+    <button
+      class="refresh-button"
+      on:click={loadEvents}
+      aria-label="Refresh events"
+      title="Refresh events"
+    >
+      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+      </svg>
+    </button>
   </div>
 
   <div class="log-container rounded-lg shadow-md overflow-hidden">
@@ -122,6 +151,7 @@
       <DataTable
         data={filteredEvents}
         columns={columns}
+        rowActions={rowActions}
         emptyMessage="No events found"
         pageSize={25}
         initialSortKey="startTime"
@@ -143,4 +173,22 @@
   }
   .table-header-title { color: var(--text-color); }
   .empty-state { color: var(--secondary-color); font-style: italic; }
+  .show-ignored {
+    font-size: 0.875rem;
+    color: var(--text-color);
+  }
+  .refresh-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.45rem;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--button-bg-color);
+    color: var(--button-text-color);
+    cursor: pointer;
+    margin-left: auto;
+  }
+  .refresh-button:hover { background-color: var(--button-hover-bg-color); }
+  .icon { width: 1.1rem; height: 1.1rem; }
 </style>

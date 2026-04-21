@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mihn1/timekeeper/datatypes"
+	"github.com/mihn1/timekeeper/internal/models"
 	"github.com/mihn1/timekeeper/internal/tzutil"
 	"github.com/mihn1/timekeeper/ui/dtos"
 )
@@ -38,4 +39,26 @@ func (a *App) GetEventLog(dateStr string) ([]*dtos.EventLogItem, error) {
 		return nil, fmt.Errorf("failed to load events: %w", err)
 	}
 	return dtos.EventLogFromModels(events, loc), nil
+}
+
+// DeleteEvent removes a single event and deducts its duration from both aggregation tables.
+func (a *App) DeleteEvent(id int) error {
+	if a.timekeeper == nil {
+		return fmt.Errorf("timekeeper is not initialized")
+	}
+
+	eventId := models.EventId(id)
+	ev, err := a.timekeeper.Storage.Events().GetEvent(eventId)
+	if err != nil {
+		return fmt.Errorf("event not found: %w", err)
+	}
+
+	elapsedMs := ev.EndTime.Sub(ev.StartTime).Milliseconds()
+	if elapsedMs > 0 {
+		date := ev.GetEventDate()
+		_ = a.timekeeper.Storage.AppAggregations().DeductAppEvent(ev, elapsedMs)
+		_ = a.timekeeper.Storage.CategoryAggregations().DeductCategory(ev.CategoryId, date, elapsedMs)
+	}
+
+	return a.timekeeper.Storage.Events().DeleteEvent(eventId)
 }

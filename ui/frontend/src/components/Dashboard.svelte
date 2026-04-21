@@ -33,7 +33,6 @@
   // ── State ─────────────────────────────────────────────────────────────────
   let viewMode = 'day'; // 'day' | '7d' | '14d' | '30d'
   let minDurationMs = 0;
-  let goalsRefreshTick = 0;
   let selectedCategoryFilter = null;
   let showDateInput = false;
   let showCreateRuleModal = false;
@@ -71,7 +70,6 @@
 
   // ── Data loading ──────────────────────────────────────────────────────────
   async function loadData() {
-    goalsRefreshTick++;
     isLoading = true;
     loadError = null;
     try {
@@ -208,7 +206,7 @@
         </div>
       {/if}
 
-      <button class="refresh-button" on:click={loadData} aria-label="Refresh data" title="Refresh data">
+      <button class="refresh-button" on:click={() => refreshData.set(Date.now())} aria-label="Refresh data" title="Refresh data">
         <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
         </svg>
@@ -242,7 +240,7 @@
 
   <!-- ── Goals panel: always mounted in day mode, manages its own data ───────── -->
   {#if viewMode === 'day'}
-    <GoalsPanel selectedDate={selectedDate} refreshTick={goalsRefreshTick} />
+    <GoalsPanel selectedDate={selectedDate} />
   {/if}
 
   <!-- ── Charts + data (gated by isLoading) ────────────────────────────────── -->

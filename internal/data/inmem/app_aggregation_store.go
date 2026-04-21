@@ -32,6 +32,17 @@ func (store *AppAggregationStore) AggregateAppEvent(event *models.AppSwitchEvent
 	return aggr, nil
 }
 
+func (store *AppAggregationStore) DeductAppEvent(event *models.AppSwitchEvent, elapsedTime int64) error {
+	key := models.GetAppAggregationKey(event)
+	if aggr, ok := store.Aggregations[key]; ok {
+		aggr.TimeElapsed -= elapsedTime
+		if aggr.TimeElapsed < 0 {
+			aggr.TimeElapsed = 0
+		}
+	}
+	return nil
+}
+
 func (store *AppAggregationStore) GetAppAggregations() ([]*models.AppAggregation, error) {
 	return utils.GetMapValues(store.Aggregations), nil
 }

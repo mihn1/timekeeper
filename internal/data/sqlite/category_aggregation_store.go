@@ -68,6 +68,18 @@ func (s *CategoryAggregations) AggregateCategory(cat *models.Category, date data
 	return aggr, nil
 }
 
+func (s *CategoryAggregations) DeductCategory(categoryId models.CategoryId, date datatypes.DateOnly, elapsedTime int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	key := models.GetCategoryAggregationKey(categoryId, date)
+	_, err := s.db.Exec(
+		"UPDATE "+s.tableName+" SET time_elapsed = MAX(0, time_elapsed - ?) WHERE key = ?",
+		elapsedTime, key,
+	)
+	return err
+}
+
 func (s *CategoryAggregations) GetCategoryAggregation(categoryId models.CategoryId, date datatypes.DateOnly) (*models.CategoryAggregation, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

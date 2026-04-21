@@ -12,5 +12,7 @@ type EventStore interface {
 	// GetEventsByTimeRange returns events whose start_time falls in [start, end).
 	// Used for timezone-aware day queries.
 	GetEventsByTimeRange(start, end time.Time) ([]*models.AppSwitchEvent, error)
+	GetEvent(id models.EventId) (*models.AppSwitchEvent, error)
 	AddEvent(event *models.AppSwitchEvent) error
+	DeleteEvent(id models.EventId) error
 }

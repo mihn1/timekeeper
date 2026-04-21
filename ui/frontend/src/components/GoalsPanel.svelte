@@ -3,9 +3,9 @@
   import { formatTimeElapsed } from '../utils/formatters';
   import { shiftDateStr } from '../utils/dateUtils';
   import { onMount } from 'svelte';
+  import { refreshData } from '../stores/timekeeper';
 
   export let selectedDate = '';
-  export let refreshTick = 0;
 
   const FREQ = [
     { value: 1, label: 'Daily' },
@@ -50,20 +50,40 @@
   $: weeklyGoals  = activeGoals.filter(g => g.frequency === 2);
   $: monthlyGoals = activeGoals.filter(g => g.frequency === 3);
 
-  const SECTIONS = [
-    { label: 'Daily',   goals: () => dailyGoals,   sublabel: () => selectedDate },
-    { label: 'Weekly',  goals: () => weeklyGoals,  sublabel: () => `${weekStart} – ${selectedDate}` },
-    { label: 'Monthly', goals: () => monthlyGoals, sublabel: () => `${monthStart} – ${selectedDate}` },
+  // Rebuild reactively so Svelte tracks dailyGoals/weeklyGoals/monthlyGoals
+  // and the date-range vars. Closures hide deps from Svelte's compile-time
+  // tracking, so {@const} on section.goals() would read stale values.
+  $: sections = [
+    { label: 'Daily',   goals: dailyGoals,   sublabel: selectedDate },
+    { label: 'Weekly',  goals: weeklyGoals,  sublabel: `${weekStart} – ${selectedDate}` },
+    { label: 'Monthly', goals: monthlyGoals, sublabel: `${monthStart} – ${selectedDate}` },
   ];
+
+  // Precompute usage per goal reactively so the template picks up changes to
+  // dailyUsage/weeklyUsage/monthlyUsage after a date change or refresh.
+  $: usageByGoalId = buildUsageByGoalId(activeGoals, dailyUsage, weeklyUsage, monthlyUsage);
+
+  function buildUsageByGoalId(goalsList, daily, weekly, monthly) {
+    const map = new Map();
+    for (const g of goalsList) {
+      const usage = g.frequency === 2 ? weekly : g.frequency === 3 ? monthly : daily;
+      const total = (g.categoryIds ?? []).reduce((sum, cid) => {
+        const c = (usage ?? []).find(x => x.id === cid);
+        return sum + (c ? (c.timeElapsed ?? 0) : 0);
+      }, 0);
+      map.set(g.id, total);
+    }
+    return map;
+  }
 
   onMount(async () => {
     await loadGoals();
     await loadPeriodData();
   });
 
-  // Reload when date changes (navigation) or dashboard refreshes.
-  $: if (selectedDate) { console.log('[GoalsPanel] selectedDate changed:', selectedDate); loadPeriodData(); }
-  $: if (refreshTick > 0) { console.log('[GoalsPanel] refreshTick changed:', refreshTick); loadPeriodData(); }
+  // Reload when date changes (navigation) or when global refresh fires.
+  $: if (selectedDate) loadPeriodData();
+  $: if ($refreshData) loadPeriodData();
 
   async function loadGoals() {
     isLoading = true;
@@ -79,34 +99,19 @@
   async function loadPeriodData() {
     if (!selectedDate) return;
     const date = selectedDate; // snapshot to detect stale results
-    console.log('[GoalsPanel] loadPeriodData start, date=', date);
     try {
       const [d, w, m] = await Promise.all([
         GetCategoryUsageTotals(date, date),
         GetCategoryUsageTotals(calendarWeekStart(date), date),
         GetCategoryUsageTotals(calendarMonthStart(date), date),
       ]);
-      if (date !== selectedDate) {
-        console.log('[GoalsPanel] loadPeriodData stale, discarding. date=', date, 'selectedDate=', selectedDate);
-        return;
-      }
-      console.log('[GoalsPanel] loadPeriodData done, date=', date, 'd=', d);
+      if (date !== selectedDate) return; // stale, a newer date is in flight
       dailyUsage   = d ?? [];
       weeklyUsage  = w ?? [];
       monthlyUsage = m ?? [];
     } catch (err) {
       console.error('[GoalsPanel] Error loading period usage:', err);
     }
-  }
-
-  function usageForGoal(goal) {
-    const usageData = goal.frequency === 2 ? weeklyUsage
-                    : goal.frequency === 3 ? monthlyUsage
-                    : dailyUsage;
-    return (goal.categoryIds ?? []).reduce((sum, cid) => {
-      const c = (usageData ?? []).find(x => x.id === cid);
-      return sum + (c ? (c.timeElapsed ?? 0) : 0);
-    }, 0);
   }
 
   function progressPct(actual, target) {
@@ -201,17 +206,16 @@
   {:else if activeGoals.length === 0 && !showAddForm}
     <div class="empty">No active goals. Click + to add one.</div>
   {:else}
-    {#each SECTIONS as section}
-      {@const sectionGoals = section.goals()}
-      {#if sectionGoals.length > 0}
+    {#each sections as section}
+      {#if section.goals.length > 0}
         <div class="section">
           <div class="section-label">
             {section.label}
-            <span class="sublabel">({section.sublabel()})</span>
+            <span class="sublabel">({section.sublabel})</span>
           </div>
           <ul class="goal-list">
-            {#each sectionGoals as goal}
-              {@const actualMs = usageForGoal(goal)}
+            {#each section.goals as goal}
+              {@const actualMs = usageByGoalId.get(goal.id) ?? 0}
               {@const target   = goal.targetMs ?? 0}
               {@const pct      = progressPct(actualMs, target)}
               <li class="goal-item">

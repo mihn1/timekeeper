@@ -3,6 +3,7 @@ package sqlite
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -88,6 +89,35 @@ func (s *EventStore) GetEventsByDate(date datatypes.DateOnly) ([]*models.AppSwit
 	}
 	defer rows.Close()
 	return scanEventRows(rows)
+}
+
+func (s *EventStore) GetEvent(id models.EventId) (*models.AppSwitchEvent, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	rows, err := s.db.Query(
+		"SELECT id, category_id, app_name, additional_data, start_time, end_time FROM "+s.tableName+" WHERE id = ?", id,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	events, err := scanEventRows(rows)
+	if err != nil {
+		return nil, err
+	}
+	if len(events) == 0 {
+		return nil, fmt.Errorf("event %d not found", id)
+	}
+	return events[0], nil
+}
+
+func (s *EventStore) DeleteEvent(id models.EventId) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_, err := s.db.Exec("DELETE FROM "+s.tableName+" WHERE id = ?", id)
+	return err
 }
 
 func scanEventRows(rows *sql.Rows) ([]*models.AppSwitchEvent, error) {

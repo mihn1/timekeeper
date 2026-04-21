@@ -18,6 +18,10 @@ export function DeleteCategory(arg1) {
   return window['go']['main']['App']['DeleteCategory'](arg1);
 }
 
+export function DeleteEvent(arg1) {
+  return window['go']['main']['App']['DeleteEvent'](arg1);
+}
+
 export function DeleteGoal(arg1) {
   return window['go']['main']['App']['DeleteGoal'](arg1);
 }

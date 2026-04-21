@@ -10,6 +10,8 @@ export function AddRule(arg1:dtos.RuleCreate):Promise<void>;
 
 export function DeleteCategory(arg1:number):Promise<void>;
 
+export function DeleteEvent(arg1:number):Promise<void>;
+
 export function DeleteGoal(arg1:number):Promise<void>;
 
 export function DeleteRule(arg1:number):Promise<void>;

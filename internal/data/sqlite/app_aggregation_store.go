@@ -70,6 +70,18 @@ func (s *AppAggregationStore) AggregateAppEvent(event *models.AppSwitchEvent, el
 	return appAggr, nil
 }
 
+func (s *AppAggregationStore) DeductAppEvent(event *models.AppSwitchEvent, elapsedTime int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	key := models.GetAppAggregationKey(event)
+	_, err := s.db.Exec(
+		"UPDATE "+s.tableName+" SET time_elapsed = MAX(0, time_elapsed - ?) WHERE key = ?",
+		elapsedTime, key,
+	)
+	return err
+}
+
 func (s *AppAggregationStore) GetAppAggregations() ([]*models.AppAggregation, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
