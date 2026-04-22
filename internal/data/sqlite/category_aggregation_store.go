@@ -138,6 +138,40 @@ func (s *CategoryAggregations) GetCategoryAggregationsByDate(date datatypes.Date
 	return aggregations, nil
 }
 
+func (s *CategoryAggregations) ReplaceCategoryAggregationsForDates(dates []datatypes.DateOnly, aggrs []*models.CategoryAggregation) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	for _, d := range dates {
+		if _, err := tx.Exec("DELETE FROM "+s.tableName+" WHERE date = ?", d); err != nil {
+			return err
+		}
+	}
+
+	stmt, err := tx.Prepare("INSERT INTO " + s.tableName + " (key, category_id, date, time_elapsed) VALUES (?, ?, ?, ?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, aggr := range aggrs {
+		key := models.GetCategoryAggregationKey(aggr.CategoryId, aggr.Date)
+		if _, err := stmt.Exec(key, aggr.CategoryId, aggr.Date, aggr.TimeElapsed); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
 func (s *CategoryAggregations) GetCategoryAggregationsByDateRange(start, end datatypes.DateOnly) ([]*models.CategoryAggregation, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

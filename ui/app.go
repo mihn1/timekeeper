@@ -60,6 +60,10 @@ func (a *App) Startup(ctx context.Context) {
 	}
 	a.timekeeper.SetMinEventDurationMs(a.prefs.MinEventDurationMs)
 
+	// Rerun-rules job: max range + status pipe to the frontend.
+	a.timekeeper.SetMaxRerunRangeDays(a.config.MaxRerunRangeDays)
+	a.timekeeper.SetRerunStatusCallback(a.emitRerunStatus)
+
 	// Set up the platform observer
 	observer := platforms.NewPlatformObserver(a.timekeeper.PushEvent, false, a.logger)
 	a.timekeeper.AddObserver(observer)

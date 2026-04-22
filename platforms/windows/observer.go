@@ -110,6 +110,9 @@ var (
 	procDispatchMessageW     = user32.NewProc("DispatchMessageW")
 	procPostThreadMessageW   = user32.NewProc("PostThreadMessageW")
 	procGetCurrentThreadId   = kernel32.NewProc("GetCurrentThreadId")
+	procIsWindowVisible      = user32.NewProc("IsWindowVisible")
+	procGetWindowLongPtrW    = user32.NewProc("GetWindowLongPtrW")
+	procGetWindowRect        = user32.NewProc("GetWindowRect")
 )
 
 const (
@@ -127,6 +130,8 @@ const (
 	WM_QUIT                           = 0x0012
 	GA_ROOT                           = 2 // GetAncestor: root in parent chain
 	GA_ROOTOWNER                      = 3 // GetAncestor: root in parent+owner chains
+	WS_EX_TOOLWINDOW                  = 0x00000080
+	WS_EX_NOACTIVATE                  = 0x08000000
 )
 
 var globalObserver *Observer
@@ -401,6 +406,22 @@ func collectWindowInfo(hwnd uintptr) (appName, exePath, title string) {
 		return "", "", ""
 	}
 
+	// Filter out non-user-facing windows. Background utilities (Asus Armoury
+	// Crate, AsusCheckASCI, etc.) and Windows-internal helper processes can
+	// briefly take "foreground" via hidden/tool windows — especially during
+	// sleep/wake — and would otherwise pollute event aggregations and reset
+	// our idle-gap tracking, masking sleep periods.
+	if !isWindowVisible(root) {
+		return "", "", ""
+	}
+	exStyle := getWindowExStyle(root)
+	if exStyle&WS_EX_TOOLWINDOW != 0 {
+		return "", "", ""
+	}
+	if isZeroSizeWindow(root) {
+		return "", "", ""
+	}
+
 	title = getWindowTitle(root)
 	pid := getWindowPID(root)
 	if pid == 0 {
@@ -450,6 +471,33 @@ func normalizeAppName(base string) string {
 	default:
 		return trimExt(lower)
 	}
+}
+
+func isWindowVisible(hwnd uintptr) bool {
+	r, _, _ := procIsWindowVisible.Call(hwnd)
+	return r != 0
+}
+
+// gwlExStyle holds the GWL_EXSTYLE index (-20) as a runtime value so the
+// negative constant survives the uintptr conversion (Go compile-time
+// conversion would reject it as overflowing uintptr).
+var gwlExStyle = int32(-20)
+
+func getWindowExStyle(hwnd uintptr) uint32 {
+	r, _, _ := procGetWindowLongPtrW.Call(hwnd, uintptr(gwlExStyle))
+	return uint32(r)
+}
+
+// isZeroSizeWindow reports whether the window has no on-screen footprint.
+// Headless helper windows (e.g. Win32 message-only or hidden utility surfaces)
+// can briefly hold foreground status without ever being visible to the user.
+func isZeroSizeWindow(hwnd uintptr) bool {
+	var rect struct{ Left, Top, Right, Bottom int32 }
+	r, _, _ := procGetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(&rect)))
+	if r == 0 {
+		return false // call failed — don't filter on a failure
+	}
+	return rect.Right <= rect.Left || rect.Bottom <= rect.Top
 }
 
 func getWindowClassName(hwnd uintptr) string {

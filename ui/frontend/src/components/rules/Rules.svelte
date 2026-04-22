@@ -7,6 +7,7 @@
   import CreateRuleModal from './CreateRuleModal.svelte';
   import EditRuleModal from './EditRuleModal.svelte';
   import RuleTestPanel from './RuleTestPanel.svelte';
+  import RerunRulesModal from './RerunRulesModal.svelte';
   import CreateCategoryModal from '../categories/CreateCategoryModal.svelte';
   import { dtos } from '../../../wailsjs/go/models';
   import type { Column } from '../../types/table';
@@ -20,6 +21,7 @@
   let showCreateRuleModal = false;
   let showEditRuleModal = false;
   let showCreateCategoryModal = false;
+  let showRerunRulesModal = false;
   let ruleToDelete: dtos.RuleListItem | null = null;
   let ruleToEdit: dtos.RuleListItem | null = null;
   let searchTerm = '';
@@ -212,10 +214,15 @@
   on:ruleEdited={handleRuleEdited}
 />
 
-<CreateCategoryModal 
+<CreateCategoryModal
   show={showCreateCategoryModal}
   on:close={() => showCreateCategoryModal = false}
   on:categoryAdded={handleCategoryAdded}
+/>
+
+<RerunRulesModal
+  show={showRerunRulesModal}
+  on:close={() => showRerunRulesModal = false}
 />
 
 <!-- Delete Confirmation Modal -->
@@ -248,7 +255,7 @@
   <!-- Action Buttons -->
   <div class="flex justify-between mb-6">
     <div class="flex gap-4">
-      <button 
+      <button
         class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 flex items-center cursor-pointer"
         on:click={openCreateRuleModal}
       >
@@ -256,6 +263,17 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
         </svg>
         Add Rule
+      </button>
+
+      <button
+        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center cursor-pointer"
+        on:click={() => showRerunRulesModal = true}
+        title="Re-apply current rules to historical events"
+      >
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6M4 10l5-5 5 5M20 14l-5 5-5-5"/>
+        </svg>
+        Rerun Rules
       </button>
     </div>
     

@@ -11,4 +11,7 @@ type AppAggregationStore interface {
 	GetAppAggregations() ([]*models.AppAggregation, error)
 	GetAppAggregationsByDate(date datatypes.DateOnly) ([]*models.AppAggregation, error)
 	GetAppAggregationsByDateRange(start, end datatypes.DateOnly) ([]*models.AppAggregation, error)
+	// ReplaceAppAggregationsForDates deletes all existing app aggregations for the
+	// given dates and inserts the provided aggregations atomically (best-effort per-store).
+	ReplaceAppAggregationsForDates(dates []datatypes.DateOnly, aggrs []*models.AppAggregation) error
 }

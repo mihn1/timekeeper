@@ -47,6 +47,8 @@ type TimeKeeper struct {
 	closed               bool
 	closeOnce            sync.Once
 	minEventDurationMs   int64
+
+	rerun *rerunController
 }
 
 func NewTimeKeeperInMem(opts TimeKeeperOptions) *TimeKeeper {

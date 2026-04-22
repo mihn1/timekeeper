@@ -333,3 +333,36 @@ export namespace dtos {
 
 }
 
+export namespace main {
+	
+	export class RerunJobStatusDTO {
+	    state: string;
+	    startDate: string;
+	    endDate: string;
+	    totalEvents: number;
+	    processedEvents: number;
+	    errorMessage?: string;
+	    startedAt?: string;
+	    completedAt?: string;
+	    maxRangeDays: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new RerunJobStatusDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.state = source["state"];
+	        this.startDate = source["startDate"];
+	        this.endDate = source["endDate"];
+	        this.totalEvents = source["totalEvents"];
+	        this.processedEvents = source["processedEvents"];
+	        this.errorMessage = source["errorMessage"];
+	        this.startedAt = source["startedAt"];
+	        this.completedAt = source["completedAt"];
+	        this.maxRangeDays = source["maxRangeDays"];
+	    }
+	}
+
+}
+

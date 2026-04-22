@@ -129,6 +129,40 @@ func (s *AppAggregationStore) GetAppAggregationsByDate(date datatypes.DateOnly) 
 	return aggregations, nil
 }
 
+func (s *AppAggregationStore) ReplaceAppAggregationsForDates(dates []datatypes.DateOnly, aggrs []*models.AppAggregation) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	for _, d := range dates {
+		if _, err := tx.Exec("DELETE FROM "+s.tableName+" WHERE date = ?", d); err != nil {
+			return err
+		}
+	}
+
+	stmt, err := tx.Prepare("INSERT INTO " + s.tableName + " (key, app_name, date, time_elapsed) VALUES (?, ?, ?, ?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, aggr := range aggrs {
+		key := aggr.AppName + "-" + aggr.Date.String()
+		if _, err := stmt.Exec(key, aggr.AppName, aggr.Date, aggr.TimeElapsed); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
 func (s *AppAggregationStore) GetAppAggregationsByDateRange(start, end datatypes.DateOnly) ([]*models.AppAggregation, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

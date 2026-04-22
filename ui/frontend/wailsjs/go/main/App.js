@@ -82,6 +82,10 @@ export function GetPreferences() {
   return window['go']['main']['App']['GetPreferences']();
 }
 
+export function GetRerunJobStatus() {
+  return window['go']['main']['App']['GetRerunJobStatus']();
+}
+
 export function GetRule(arg1) {
   return window['go']['main']['App']['GetRule'](arg1);
 }
@@ -100,6 +104,10 @@ export function IsTrackingEnabled() {
 
 export function SavePreferences(arg1) {
   return window['go']['main']['App']['SavePreferences'](arg1);
+}
+
+export function StartRerunRules(arg1, arg2) {
+  return window['go']['main']['App']['StartRerunRules'](arg1, arg2);
 }
 
 export function TestRuleMatch(arg1, arg2, arg3) {

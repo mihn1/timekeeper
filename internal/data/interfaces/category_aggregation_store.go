@@ -12,4 +12,7 @@ type CategoryAggregationStore interface {
 	GetCategoryAggregations() ([]*models.CategoryAggregation, error)
 	GetCategoryAggregationsByDate(date datatypes.DateOnly) ([]*models.CategoryAggregation, error)
 	GetCategoryAggregationsByDateRange(start, end datatypes.DateOnly) ([]*models.CategoryAggregation, error)
+	// ReplaceCategoryAggregationsForDates deletes all existing category aggregations for the
+	// given dates and inserts the provided aggregations atomically (best-effort per-store).
+	ReplaceCategoryAggregationsForDates(dates []datatypes.DateOnly, aggrs []*models.CategoryAggregation) error
 }

@@ -63,6 +63,27 @@ func (store *CategoryAggregationStore) GetCategoryAggregationsByDate(date dataty
 	return aggregations, nil
 }
 
+func (store *CategoryAggregationStore) ReplaceCategoryAggregationsForDates(dates []datatypes.DateOnly, aggrs []*models.CategoryAggregation) error {
+	dateSet := make(map[string]struct{}, len(dates))
+	for _, d := range dates {
+		dateSet[d.String()] = struct{}{}
+	}
+
+	for key, aggr := range store.Aggregations {
+		if _, ok := dateSet[aggr.Date.String()]; ok {
+			delete(store.Aggregations, key)
+		}
+	}
+
+	for _, aggr := range aggrs {
+		key := models.GetCategoryAggregationKey(aggr.CategoryId, aggr.Date)
+		copy := *aggr
+		store.Aggregations[key] = &copy
+	}
+
+	return nil
+}
+
 func (store *CategoryAggregationStore) GetCategoryAggregationsByDateRange(start, end datatypes.DateOnly) ([]*models.CategoryAggregation, error) {
 	var aggregations []*models.CategoryAggregation
 	for _, aggregation := range store.Aggregations {

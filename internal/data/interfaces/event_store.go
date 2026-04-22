@@ -15,4 +15,6 @@ type EventStore interface {
 	GetEvent(id models.EventId) (*models.AppSwitchEvent, error)
 	AddEvent(event *models.AppSwitchEvent) error
 	DeleteEvent(id models.EventId) error
+	// UpdateEventCategory updates only the CategoryId field of a stored event.
+	UpdateEventCategory(id models.EventId, categoryId models.CategoryId) error
 }

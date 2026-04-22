@@ -42,6 +42,18 @@ func (s *EventStore) GetEvent(id models.EventId) (*models.AppSwitchEvent, error)
 	return nil, fmt.Errorf("event %d not found", id)
 }
 
+func (s *EventStore) UpdateEventCategory(id models.EventId, categoryId models.CategoryId) error {
+	for _, evs := range s.events {
+		for _, ev := range evs {
+			if ev.Id == id {
+				ev.CategoryId = categoryId
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("event %d not found", id)
+}
+
 func (s *EventStore) DeleteEvent(id models.EventId) error {
 	for dateKey, evs := range s.events {
 		for i, ev := range evs {

@@ -57,6 +57,27 @@ func (store *AppAggregationStore) GetAppAggregationsByDate(date datatypes.DateOn
 	return aggregations, nil
 }
 
+func (store *AppAggregationStore) ReplaceAppAggregationsForDates(dates []datatypes.DateOnly, aggrs []*models.AppAggregation) error {
+	dateSet := make(map[string]struct{}, len(dates))
+	for _, d := range dates {
+		dateSet[d.String()] = struct{}{}
+	}
+
+	for key, aggr := range store.Aggregations {
+		if _, ok := dateSet[aggr.Date.String()]; ok {
+			delete(store.Aggregations, key)
+		}
+	}
+
+	for _, aggr := range aggrs {
+		key := aggr.AppName + "-" + aggr.Date.String()
+		copy := *aggr
+		store.Aggregations[key] = &copy
+	}
+
+	return nil
+}
+
 func (store *AppAggregationStore) GetAppAggregationsByDateRange(start, end datatypes.DateOnly) ([]*models.AppAggregation, error) {
 	var aggregations []*models.AppAggregation
 	for _, aggregation := range store.Aggregations {

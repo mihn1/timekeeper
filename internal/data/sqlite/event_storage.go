@@ -112,6 +112,14 @@ func (s *EventStore) GetEvent(id models.EventId) (*models.AppSwitchEvent, error)
 	return events[0], nil
 }
 
+func (s *EventStore) UpdateEventCategory(id models.EventId, categoryId models.CategoryId) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_, err := s.db.Exec("UPDATE "+s.tableName+" SET category_id = ? WHERE id = ?", categoryId, id)
+	return err
+}
+
 func (s *EventStore) DeleteEvent(id models.EventId) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

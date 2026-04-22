@@ -3,7 +3,7 @@
   import { GetEventLog, GetCategories, DeleteEvent } from '../../../wailsjs/go/main/App';
   import { refreshData } from '../../stores/timekeeper';
   import { timezone } from '../../stores/preferences.js';
-  import { todayInTz } from '../../utils/dateUtils.js';
+  import { todayInTz, shiftDateStr, formatDateDisplay } from '../../utils/dateUtils.js';
   import DataTable from '../common/DataTable.svelte';
   import { dtos } from '../../../wailsjs/go/models';
   import type { Column } from '../../types/table';
@@ -15,12 +15,21 @@
   let loadError: string | null = null;
   let searchTerm = '';
   let showIgnored = false;
+  let showDateInput = false;
+
+  $: today = todayInTz($timezone);
+  $: isToday = selectedDate === today;
 
   $: if ($refreshData || selectedDate) { loadEvents(); }
 
   $: filteredEvents = events
     .filter(e => showIgnored || e.categoryId !== 0)
     .filter(e => e.appName.toLowerCase().includes(searchTerm.toLowerCase()));
+
+  $: displayEvents = filteredEvents.map(e => ({
+    ...e,
+    timeRange: formatTimeRange(e.startTime, e.endTime),
+  }));
 
   onMount(() => {
     loadCategories();
@@ -61,16 +70,25 @@
     return `${Math.floor(m / 60)}h ${m % 60}m`;
   }
 
+  function formatTimeRange(start: string, end: string): string {
+    const s = start?.slice(0, 5) ?? '—';
+    const e = end === '—' || !end ? '—' : end.slice(0, 5);
+    return `${s} – ${e}`;
+  }
+
+  function shiftDate(days: number) { selectedDate = shiftDateStr(selectedDate, days); }
+  function goToday() { selectedDate = today; }
+
   const columns: Column[] = [
-    { key: 'startTime',    title: 'Start',    sortable: true },
-    { key: 'endTime',      title: 'End',      sortable: false },
+    { key: 'timeRange',    title: 'Time',     sortable: true },
     { key: 'appName',      title: 'App',      sortable: true },
     { key: 'durationSecs', title: 'Duration', sortable: true,
       formatter: (v: number) => formatDuration(v) },
     { key: 'categoryId',   title: 'Category', sortable: true,
       formatter: (v: number) => getCategoryName(v) },
     { key: 'urlOrTitle',   title: 'URL / Title', sortable: false,
-      formatter: (v: string) => v && v.length > 60 ? v.slice(0, 57) + '…' : (v ?? '') },
+      cellClass: 'url-col',
+      formatter: (v: string) => v && v.length > 38 ? v.slice(0, 35) + '…' : (v ?? '') },
   ];
 
   async function deleteEvent(row: dtos.EventLogItem) {
@@ -92,13 +110,27 @@
   <h1 class="text-2xl font-bold mb-6 title">Event Log</h1>
 
   <div class="flex gap-4 items-center mb-6 flex-wrap">
-    <label class="font-medium" for="date-picker">Date:</label>
-    <input
-      id="date-picker"
-      type="date"
-      class="p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-      bind:value={selectedDate}
-    />
+    <div class="date-nav">
+      <button class="nav-btn" on:click={() => shiftDate(-1)} title="Previous day">&#8249;</button>
+
+      {#if showDateInput}
+        <input
+          type="date"
+          class="date-input-popup"
+          bind:value={selectedDate}
+          on:blur={() => showDateInput = false}
+          on:change={() => showDateInput = false}
+        />
+      {:else}
+        <button class="date-display" on:click={() => showDateInput = true} title="Click to pick a date">
+          {formatDateDisplay(selectedDate, $timezone)}
+        </button>
+      {/if}
+
+      <button class="nav-btn" on:click={() => shiftDate(1)} title="Next day" disabled={isToday}>&#8250;</button>
+      <button class="today-btn" on:click={goToday} disabled={isToday}>Today</button>
+    </div>
+
     <label class="flex items-center gap-2 cursor-pointer select-none show-ignored">
       <input type="checkbox" bind:checked={showIgnored} />
       <span>Show ignored events</span>
@@ -149,12 +181,12 @@
       </div>
     {:else}
       <DataTable
-        data={filteredEvents}
+        data={displayEvents}
         columns={columns}
         rowActions={rowActions}
         emptyMessage="No events found"
         pageSize={25}
-        initialSortKey="startTime"
+        initialSortKey="timeRange"
         initialSortDirection="desc"
       />
     {/if}
@@ -191,4 +223,67 @@
   }
   .refresh-button:hover { background-color: var(--button-hover-bg-color); }
   .icon { width: 1.1rem; height: 1.1rem; }
+
+  /* ── Date navigation (mirrors Dashboard) ─────────────────────── */
+  .date-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .nav-btn {
+    background: var(--button-bg-color);
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 50%;
+    width: 2rem;
+    height: 2rem;
+    font-size: 1.3rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .nav-btn:hover:not(:disabled) { background: var(--button-hover-bg-color); }
+  .nav-btn:disabled { opacity: 0.35; cursor: default; }
+  .date-display {
+    background: none;
+    border: 1px solid var(--input-border-color);
+    border-radius: 6px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.9rem;
+    color: var(--text-color);
+    cursor: pointer;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .date-display:hover { border-color: var(--button-bg-color); }
+  .date-input-popup {
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--input-border-color);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background-color: var(--input-bg-color);
+    color: var(--input-text-color);
+  }
+  .today-btn {
+    background: var(--button-bg-color);
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 6px;
+    padding: 0.3rem 0.65rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    margin-left: 0.2rem;
+  }
+  .today-btn:hover:not(:disabled) { background: var(--button-hover-bg-color); }
+  .today-btn:disabled { opacity: 0.35; cursor: default; }
+
+  /* ── URL / Title column: cap width so delete button stays visible ── */
+  :global(.url-col) {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 </style>
