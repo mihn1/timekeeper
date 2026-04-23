@@ -41,6 +41,15 @@ func (a *App) GetEventLog(dateStr string) ([]*dtos.EventLogItem, error) {
 	return dtos.EventLogFromModels(events, loc), nil
 }
 
+// OverrideEventCategory manually reassigns an event's category and rebalances the
+// category aggregation. Rejected while a rerun job is in progress.
+func (a *App) OverrideEventCategory(id int, newCategoryId int) error {
+	if a.timekeeper == nil {
+		return fmt.Errorf("timekeeper is not initialized")
+	}
+	return a.timekeeper.OverrideEventCategory(models.EventId(id), models.CategoryId(newCategoryId))
+}
+
 // DeleteEvent removes a single event and deducts its duration from both aggregation tables.
 func (a *App) DeleteEvent(id int) error {
 	if a.timekeeper == nil {

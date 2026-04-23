@@ -3,8 +3,11 @@
   import { GetEventLog, GetCategories, DeleteEvent } from '../../../wailsjs/go/main/App';
   import { refreshData } from '../../stores/timekeeper';
   import { timezone } from '../../stores/preferences.js';
+  import { rerunStatus } from '../../stores/rerun.js';
+  import { showToast } from '../../stores/toast.js';
   import { todayInTz, shiftDateStr, formatDateDisplay } from '../../utils/dateUtils.js';
   import DataTable from '../common/DataTable.svelte';
+  import OverrideCategoryModal from './OverrideCategoryModal.svelte';
   import { dtos } from '../../../wailsjs/go/models';
   import type { Column } from '../../types/table';
 
@@ -19,6 +22,10 @@
 
   $: today = todayInTz($timezone);
   $: isToday = selectedDate === today;
+  $: isRerunRunning = $rerunStatus?.state === 'running';
+
+  let overrideModalOpen = false;
+  let overrideEvent: dtos.EventLogItem | null = null;
 
   $: if ($refreshData || selectedDate) { loadEvents(); }
 
@@ -101,7 +108,26 @@
     }
   }
 
-  const rowActions = [
+  function openOverride(row: dtos.EventLogItem) {
+    if (isRerunRunning) return;
+    overrideEvent = row;
+    overrideModalOpen = true;
+  }
+
+  function handleOverrideSaved(e: CustomEvent<{ eventId: number; categoryId: number }>) {
+    const { eventId, categoryId } = e.detail;
+    events = events.map(ev => ev.id === eventId ? { ...ev, categoryId } : ev);
+    const name = getCategoryName(categoryId);
+    showToast(`Category updated to "${name}"`);
+  }
+
+  $: rowActions = [
+    {
+      icon: 'edit',
+      title: isRerunRunning ? 'Override disabled: rerun in progress' : 'Override category',
+      handler: openOverride,
+      disabled: isRerunRunning,
+    },
     { icon: 'trash', title: 'Delete event', handler: deleteEvent },
   ];
 </script>
@@ -192,6 +218,15 @@
     {/if}
   </div>
 </div>
+
+{#if overrideModalOpen && overrideEvent}
+  <OverrideCategoryModal
+    event={overrideEvent}
+    categories={categories}
+    on:close={() => { overrideModalOpen = false; overrideEvent = null; }}
+    on:saved={handleOverrideSaved}
+  />
+{/if}
 
 <style>
   .title { color: var(--text-color); }

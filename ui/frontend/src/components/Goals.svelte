@@ -1,7 +1,8 @@
 <script>
   import { onMount } from 'svelte';
-  import { GetGoals, GetCategories, AddGoal, UpdateGoal, DeleteGoal } from '../../wailsjs/go/main/App';
+  import { GetGoals, GetCategories, UpdateGoal, DeleteGoal } from '../../wailsjs/go/main/App';
   import { refreshData } from '../stores/timekeeper';
+  import CreateGoalModal from './goals/CreateGoalModal.svelte';
 
   const FREQ = [
     { value: 1, label: 'Daily' },
@@ -23,15 +24,7 @@
   let categories = [];
   let isLoading = true;
   let loadError = null;
-
-  // Add form state
-  let newName = '';
-  let newFreq = 1;
-  let newCategoryIds = [];
-  let newHours = 1;
-  let newMinutes = 0;
-  let adding = false;
-  let addError = null;
+  let showAddModal = false;
 
   // Edit state — keyed by goal.id
   let editingId = null;
@@ -66,44 +59,12 @@
     }
   }
 
-  function toggleNewCategory(id) {
-    const numId = Number(id);
-    if (newCategoryIds.includes(numId)) {
-      newCategoryIds = newCategoryIds.filter(x => x !== numId);
-    } else {
-      newCategoryIds = [...newCategoryIds, numId];
-    }
-  }
-
   function toggleEditCategory(id) {
     const numId = Number(id);
     if (editCategoryIds.includes(numId)) {
       editCategoryIds = editCategoryIds.filter(x => x !== numId);
     } else {
       editCategoryIds = [...editCategoryIds, numId];
-    }
-  }
-
-  async function addGoal() {
-    if (!newName.trim()) { addError = 'Name is required.'; return; }
-    if (!newCategoryIds.length) { addError = 'Select at least one category.'; return; }
-    const ms = hmToMs(newHours, newMinutes);
-    if (ms <= 0) { addError = 'Target must be greater than 0.'; return; }
-    addError = null;
-    adding = true;
-    try {
-      await AddGoal(newName.trim(), newCategoryIds.map(Number), newFreq, ms);
-      newName = '';
-      newFreq = 1;
-      newCategoryIds = [];
-      newHours = 1;
-      newMinutes = 0;
-      await loadGoals();
-    } catch (err) {
-      console.error('Error adding goal:', err);
-      addError = 'Failed to save goal.';
-    } finally {
-      adding = false;
     }
   }
 
@@ -158,11 +119,21 @@
   }
 </script>
 
+<CreateGoalModal
+  show={showAddModal}
+  {categories}
+  on:goalAdded={async () => { showAddModal = false; await loadGoals(); }}
+  on:close={() => { showAddModal = false; }}
+/>
+
 <div class="p-6 max-w-3xl mx-auto">
-  <h1 class="text-2xl font-bold mb-6 page-title">Goals</h1>
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold page-title">Goals</h1>
+    <button class="add-goal-btn" on:click={() => { showAddModal = true; }}>+ Add Goal</button>
+  </div>
 
   <!-- Existing goals -->
-  <div class="section-card mb-6">
+  <div class="section-card">
     <div class="mb-4">
       <h2 class="text-lg font-semibold">Time Goals</h2>
       <p class="text-sm section-desc mt-1">Daily, weekly, and monthly targets across one or more categories. Progress shown on the Dashboard.</p>
@@ -267,55 +238,6 @@
       {/each}
     {/if}
   </div>
-
-  <!-- Add new goal -->
-  <div class="section-card">
-    <h2 class="text-lg font-semibold mb-4">Add Goal</h2>
-    <div class="flex flex-col gap-3">
-      <div class="flex flex-wrap gap-3 items-end">
-        <div class="flex-1" style="min-width:160px">
-          <label class="block text-sm font-medium mb-1" for="new-goal-name">Name</label>
-          <input id="new-goal-name" type="text" class="form-input w-full" placeholder="e.g. Deep Work" bind:value={newName} />
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1" for="new-goal-freq">Frequency</label>
-          <select id="new-goal-freq" class="form-select" bind:value={newFreq}>
-            {#each FREQ as f}
-              <option value={f.value}>{f.label}</option>
-            {/each}
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1">Target</label>
-          <div class="flex items-center gap-1">
-            <input type="number" min="0" max="999" step="1" class="hm-input-lg" bind:value={newHours} />
-            <span class="unit-label">h</span>
-            <input type="number" min="0" max="59" step="5" class="hm-input-lg" bind:value={newMinutes} />
-            <span class="unit-label">m</span>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <div class="text-sm font-medium mb-1">Categories</div>
-        <div class="cat-grid">
-          {#each availableCategories as cat}
-            <label class="cat-check-lg">
-              <input type="checkbox" checked={newCategoryIds.includes(cat.id)} on:change={() => toggleNewCategory(cat.id)} />
-              {cat.name}
-            </label>
-          {/each}
-        </div>
-      </div>
-
-      <div class="flex items-center gap-3">
-        <button class="add-goal-btn" on:click={addGoal} disabled={adding || !newName.trim() || !newCategoryIds.length}>
-          {adding ? 'Saving…' : 'Add Goal'}
-        </button>
-        {#if addError}<p class="text-red-500 text-xs">{addError}</p>{/if}
-      </div>
-    </div>
-  </div>
 </div>
 
 <style>
@@ -401,25 +323,6 @@
     color: var(--text-color);
     cursor: pointer;
   }
-  .cat-check-lg {
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-    font-size: 0.875rem;
-    color: var(--text-color);
-    cursor: pointer;
-  }
-
-  .cat-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 1rem;
-    padding: 0.5rem;
-    border: 1px solid var(--input-border-color);
-    border-radius: 6px;
-    background: var(--input-bg-color);
-  }
-
   .hm-input {
     width: 3.5rem;
     padding: 0.2rem 0.4rem;
@@ -428,17 +331,6 @@
     background-color: var(--input-bg-color);
     color: var(--input-text-color);
     font-size: 0.85rem;
-    text-align: right;
-  }
-
-  .hm-input-lg {
-    width: 4rem;
-    padding: 0.35rem 0.5rem;
-    border: 1px solid var(--input-border-color);
-    border-radius: 4px;
-    background-color: var(--input-bg-color);
-    color: var(--input-text-color);
-    font-size: 0.875rem;
     text-align: right;
   }
 
@@ -469,16 +361,6 @@
   .save-btn:hover { opacity: 0.85; }
   .cancel-btn { background-color: var(--button-bg-color); color: var(--text-color); }
   .cancel-btn:hover { background-color: var(--button-hover-bg-color); }
-
-  .form-select, .form-input {
-    padding: 0.4rem 0.6rem;
-    border: 1px solid var(--input-border-color);
-    border-radius: 4px;
-    background-color: var(--input-bg-color);
-    color: var(--input-text-color);
-    font-size: 0.875rem;
-  }
-  .form-select { min-width: 120px; }
 
   .add-goal-btn {
     padding: 0.4rem 1rem;

@@ -128,9 +128,10 @@
                   <div class="flex justify-end space-x-2">
                     {#if rowActions.length > 0}
                       {#each rowActions as action}
-                        <button 
-                          class={`focus:outline-none cursor-pointer action-btn ${action.icon === 'trash' ? 'delete-btn' : 'edit-btn'}`}
-                          on:click={() => handleActionClick(row, action.handler)}
+                        <button
+                          class={`focus:outline-none action-btn ${action.icon === 'trash' ? 'delete-btn' : 'edit-btn'} ${action.disabled ? 'disabled' : 'cursor-pointer'}`}
+                          on:click={() => !action.disabled && handleActionClick(row, action.handler)}
+                          disabled={!!action.disabled}
                           title={action.title || ''}
                         >
                           {#if action.icon === 'trash'}
@@ -275,6 +276,11 @@
   
   .delete-btn:hover {
     opacity: 0.8;
+  }
+
+  .action-btn.disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
   }
 
   .divide-y > :not([hidden]) ~ :not([hidden]) {

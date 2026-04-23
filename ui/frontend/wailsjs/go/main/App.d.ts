@@ -53,6 +53,8 @@ export function GetUncategorizedApps(arg1:string):Promise<Array<string>>;
 
 export function IsTrackingEnabled():Promise<boolean>;
 
+export function OverrideEventCategory(arg1:number,arg2:number):Promise<void>;
+
 export function SavePreferences(arg1:dtos.PreferencesDto):Promise<void>;
 
 export function StartRerunRules(arg1:string,arg2:string):Promise<void>;

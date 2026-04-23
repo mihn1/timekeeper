@@ -1,9 +1,10 @@
 <script>
-  import { GetGoals, GetCategories, AddGoal, UpdateGoal, DeleteGoal, GetCategoryUsageTotals } from '../../wailsjs/go/main/App';
+  import { GetGoals, GetCategories, DeleteGoal, GetCategoryUsageTotals } from '../../wailsjs/go/main/App';
   import { formatTimeElapsed } from '../utils/formatters';
   import { shiftDateStr } from '../utils/dateUtils';
   import { onMount } from 'svelte';
   import { refreshData } from '../stores/timekeeper';
+  import CreateGoalModal from './goals/CreateGoalModal.svelte';
 
   export let selectedDate = '';
 
@@ -13,8 +14,6 @@
     { value: 3, label: 'Monthly' },
   ];
   function freqLabel(f) { return FREQ.find(x => x.value === f)?.label ?? 'Daily'; }
-  function msToHm(ms) { return { h: Math.floor(ms / 3600000), m: Math.floor((ms % 3600000) / 60000) }; }
-  function hmToMs(h, m) { return (Number(h) * 3600 + Number(m) * 60) * 1000; }
 
   function calendarWeekStart(dateStr) {
     const d = new Date(dateStr + 'T12:00:00');
@@ -29,16 +28,8 @@
   let dailyUsage = [];
   let weeklyUsage = [];
   let monthlyUsage = [];
-  let showAddForm = false;
+  let showAddModal = false;
   let isLoading = true;
-
-  // Add form state
-  let newName = '';
-  let newFreq = 1;
-  let newCategoryIds = [];
-  let newHours = 1;
-  let newMinutes = 0;
-  let addError = null;
 
   $: weekStart  = selectedDate ? calendarWeekStart(selectedDate)  : '';
   $: monthStart = selectedDate ? calendarMonthStart(selectedDate) : '';
@@ -134,76 +125,29 @@
     }
   }
 
-  async function addGoal() {
-    if (!newName.trim()) { addError = 'Name required.'; return; }
-    if (!newCategoryIds.length) { addError = 'Select at least one category.'; return; }
-    const ms = hmToMs(newHours, newMinutes);
-    if (ms <= 0) { addError = 'Target must be > 0.'; return; }
-    addError = null;
-    try {
-      await AddGoal(newName.trim(), newCategoryIds.map(Number), newFreq, ms);
-      newName = '';
-      newFreq = 1;
-      newCategoryIds = [];
-      newHours = 1;
-      newMinutes = 0;
-      showAddForm = false;
-      await loadGoals();
-      await loadPeriodData();
-    } catch (err) {
-      console.error('Error adding goal:', err);
-      addError = 'Failed to save.';
-    }
-  }
-
-  function toggleCategory(id) {
-    const numId = Number(id);
-    if (newCategoryIds.includes(numId)) {
-      newCategoryIds = newCategoryIds.filter(x => x !== numId);
-    } else {
-      newCategoryIds = [...newCategoryIds, numId];
-    }
+  async function onGoalAdded() {
+    showAddModal = false;
+    await loadGoals();
+    await loadPeriodData();
   }
 </script>
+
+<CreateGoalModal
+  show={showAddModal}
+  {categories}
+  on:goalAdded={onGoalAdded}
+  on:close={() => { showAddModal = false; }}
+/>
 
 <div class="goals-panel">
   <div class="panel-header">
     <h3>Goals</h3>
-    <button class="add-btn" on:click={() => { showAddForm = !showAddForm; addError = null; }} title="Add goal">
-      {showAddForm ? '✕' : '+'}
-    </button>
+    <button class="add-btn" on:click={() => { showAddModal = true; }} title="Add goal">+</button>
   </div>
-
-  {#if showAddForm}
-    <div class="add-form">
-      <input class="name-input" type="text" placeholder="Goal name…" bind:value={newName} />
-      <select class="freq-select" bind:value={newFreq}>
-        {#each FREQ as f}
-          <option value={f.value}>{f.label}</option>
-        {/each}
-      </select>
-      <div class="cat-checkboxes">
-        {#each availableCategories as cat}
-          <label class="cat-check">
-            <input type="checkbox" checked={newCategoryIds.includes(cat.id)} on:change={() => toggleCategory(cat.id)} />
-            {cat.name}
-          </label>
-        {/each}
-      </div>
-      <div class="target-row">
-        <input type="number" min="0" max="999" step="1" class="hm-input" bind:value={newHours} />
-        <span class="unit">h</span>
-        <input type="number" min="0" max="59" step="5" class="hm-input" bind:value={newMinutes} />
-        <span class="unit">m</span>
-        <button class="save-btn" on:click={addGoal} disabled={!newName.trim() || !newCategoryIds.length}>Save</button>
-      </div>
-      {#if addError}<div class="add-error">{addError}</div>{/if}
-    </div>
-  {/if}
 
   {#if isLoading}
     <div class="empty">Loading…</div>
-  {:else if activeGoals.length === 0 && !showAddForm}
+  {:else if activeGoals.length === 0}
     <div class="empty">No active goals. Click + to add one.</div>
   {:else}
     {#each sections as section}
@@ -267,72 +211,6 @@
     border-radius: 4px;
   }
   .add-btn:hover, .remove-btn:hover { background: var(--table-row-hover); }
-
-  .add-form {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-    padding: 0.75rem;
-    background: var(--table-row-hover);
-    border-radius: 6px;
-  }
-
-  .name-input, .freq-select {
-    padding: 0.3rem 0.5rem;
-    border: 1px solid var(--input-border-color);
-    border-radius: 4px;
-    background-color: var(--input-bg-color);
-    color: var(--input-text-color);
-    font-size: 0.85rem;
-  }
-  .name-input { width: 100%; box-sizing: border-box; }
-
-  .cat-checkboxes {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-  .cat-check {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.8rem;
-    color: var(--text-color);
-    cursor: pointer;
-  }
-
-  .target-row {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-  }
-
-  .hm-input {
-    width: 3.5rem;
-    padding: 0.25rem 0.4rem;
-    border: 1px solid var(--input-border-color);
-    border-radius: 4px;
-    background-color: var(--input-bg-color);
-    color: var(--input-text-color);
-    font-size: 0.85rem;
-    text-align: right;
-  }
-  .unit { color: var(--secondary-color); font-size: 0.85rem; }
-
-  .save-btn {
-    padding: 0.3rem 0.75rem;
-    background-color: var(--button-bg-color);
-    color: var(--button-text-color);
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    margin-left: auto;
-  }
-  .save-btn:disabled { opacity: 0.4; cursor: default; }
-
-  .add-error { font-size: 0.75rem; color: #ef4444; }
 
   .section { margin-bottom: 0.75rem; }
   .section:last-child { margin-bottom: 0; }

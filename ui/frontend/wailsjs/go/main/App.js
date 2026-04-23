@@ -102,6 +102,10 @@ export function IsTrackingEnabled() {
   return window['go']['main']['App']['IsTrackingEnabled']();
 }
 
+export function OverrideEventCategory(arg1, arg2) {
+  return window['go']['main']['App']['OverrideEventCategory'](arg1, arg2);
+}
+
 export function SavePreferences(arg1) {
   return window['go']['main']['App']['SavePreferences'](arg1);
 }

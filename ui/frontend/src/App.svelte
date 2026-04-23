@@ -13,6 +13,7 @@
   import Preferences from './components/Preferences.svelte';
   import Menu from './components/Menu.svelte';
   import StatusBar from './components/StatusBar.svelte';
+  import ToastContainer from './components/common/ToastContainer.svelte';
 
   let isInitialized = false;
   let unsubscribe;
@@ -50,8 +51,8 @@
 <main class="app-container">
   <Menu />
   
-  {#if isInitialized}
-    <div class="content-area">
+  <div class="content-area">
+    {#if isInitialized}
       {#if $currentView === 'dashboard'}
         <Dashboard />
       {:else if $currentView === 'rules'}
@@ -67,30 +68,34 @@
       {:else}
         <Dashboard />
       {/if}
-    </div>
-    
-    <StatusBar 
-      isEnabled={$trackingEnabled} 
-      onToggle={toggleTracking} 
-    />
-  {:else}
-    <div class="loading">
-      <p>Initializing TimeKeeper...</p>
-    </div>
-  {/if}
+    {:else}
+      <div class="loading">
+        <p>Initializing TimeKeeper...</p>
+      </div>
+    {/if}
+  </div>
+
+  <StatusBar
+    isEnabled={$trackingEnabled}
+    onToggle={toggleTracking}
+  />
+
+  <ToastContainer />
 </main>
 
 <style>
   .app-container {
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
     background-color: var(--background-color);
     color: var(--text-color);
   }
-  
+
   .content-area {
     flex: 1;
+    overflow-y: auto;
     padding: 1rem;
   }
 
