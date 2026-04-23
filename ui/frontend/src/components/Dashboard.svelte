@@ -60,6 +60,29 @@
     .filter(app => app.timeElapsed >= minDurationMs)
     .filter(app => selectedCategoryFilter === null || app.categoryId === selectedCategoryFilter);
 
+  // Per-app breakdown of all categories detected for that app on the selected day.
+  // Derived from eventLog so it always reflects the current (possibly overridden) event categories.
+  $: appCategoryBreakdown = (() => {
+    const catNames = new Map(categories.map(c => [c.id, c.name]));
+    const byApp = new Map();
+    for (const ev of eventLog) {
+      const ms = (ev.durationSecs ?? 0) * 1000;
+      if (ms <= 0) continue;
+      let m = byApp.get(ev.appName);
+      if (!m) { m = new Map(); byApp.set(ev.appName, m); }
+      m.set(ev.categoryId, (m.get(ev.categoryId) ?? 0) + ms);
+    }
+    const out = new Map();
+    for (const [appName, m] of byApp) {
+      out.set(appName, [...m].map(([categoryId, timeElapsed]) => ({
+        categoryId,
+        categoryName: catNames.get(categoryId) ?? (categoryId === 0 ? 'Ignored' : 'Undefined'),
+        timeElapsed,
+      })).sort((a, b) => b.timeElapsed - a.timeElapsed));
+    }
+    return out;
+  })();
+
   $: if ($refreshData || selectedDate) {
     loadData();
   }
@@ -293,12 +316,22 @@
           </thead>
           <tbody>
             {#each filteredAppUsageData as app}
+              {@const cats = appCategoryBreakdown.get(app.appName) ?? [{ categoryId: app.categoryId, categoryName: app.categoryName, timeElapsed: app.timeElapsed }]}
               <tr>
                 <td>{app.appName}</td>
                 <td>
-                  <span class="cat-badge" on:click={() => selectedCategoryFilter = selectedCategoryFilter === app.categoryId ? null : app.categoryId} title="Filter by this category">
-                    {app.categoryName}
-                  </span>
+                  <div class="cat-list">
+                    {#each cats as c}
+                      <span
+                        class="cat-badge"
+                        class:active={selectedCategoryFilter === c.categoryId}
+                        on:click={() => selectedCategoryFilter = selectedCategoryFilter === c.categoryId ? null : c.categoryId}
+                        title="{c.categoryName} — {formatTimeElapsed(c.timeElapsed)} (click to filter)"
+                      >
+                        {c.categoryName}{#if cats.length > 1}<span class="cat-time">· {formatTimeElapsed(c.timeElapsed)}</span>{/if}
+                      </span>
+                    {/each}
+                  </div>
                 </td>
                 <td>{formatTimeElapsed(app.timeElapsed)}</td>
               </tr>
@@ -597,6 +630,17 @@
     user-select: none;
   }
   .cat-badge:hover { background: var(--button-bg-color); color: var(--button-text-color); }
+  .cat-badge.active { background: var(--button-bg-color); color: var(--button-text-color); }
+  .cat-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  .cat-time {
+    margin-left: 0.3rem;
+    opacity: 0.7;
+    font-weight: 400;
+  }
 
   .empty-cell {
     text-align: center;
